@@ -4,6 +4,30 @@
 3. 배운내용 & 코드
 4. 최근 날짜가 제일 위로 올라오게
 
+## 20260909(2주차)
+* app 디렉토리 생성 - layout.tsx 파일 생성(루트 레이아웃, html and body tag 추가)
+```
+export default function RootLayout({children} : {children: React.ReactNode}) {
+    return (<html lang="en"><body>{children}<body></html>);
+}
+```
+* 초기 콘텐츠로 사용할 홈페이지 "app/page.tsx" 생성
+* 사용자가 애플리케이션의 루트를 방문하면 page, layout 두 문서 모두 렌더링 됨
+* 타입스크립트 환경에서 리액트와 리액트돔을 사용할 수 있도록 타입 정의 제공하는 패키치 설치해야함 pnpm add -D @types/react @types/react-dom, npm install -D @types/react @types/react-dom
+* 일반 설치는 실제 서비스 구동에 반드시 필요한 패키지이고 -D는 개발용이라 코드 빌드, 테스트, 린팅 등 개발할 때만 필요한 패키지
+* 프로젝트 루트에 있는 src 폴덜를 사용하여 애플리케이션 코드와 구성 파일을 분리할 수 있다
+* 루트 레이아웃을 만드는 것을 잊어버린 경우 Next,js에서 개발 서버를 실행할 때 자동으로 빌드 됨
+* 정적 리소스를 저장하기 위한 퍼블릭 디렉토리를 프로젝트 루트에 생성
+* 퍼블릭 디렉토리를 생성하면 기본 URL로 퍼블릭 디렉토리 내부의 리소스를 참조할 수 있음
+```
+import Image from 'next/profile'
+
+export default function Page(){
+    return <Image src="/profile.png" alt="profile" width=(100) height(100) />
+}
+```
+* 
+
 ## 20260902(1주차)
 * project structue, layout and pages, linking and navigating, server and client components, fetching data, css, image optimization, font optimization, deploying
 * Next.js는 풀스텍 웹 애플리케이션 구축을 위한 React 프레임워크입니다
