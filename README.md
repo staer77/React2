@@ -26,7 +26,18 @@ export default function Page(){
     return <Image src="/profile.png" alt="profile" width=(100) height(100) />
 }
 ```
-* 
+* https://nextjs.org/docs/app/api-reference/config/typescript
+* /src 디렉토리 사용 추천 코드와 설정 파일을 분리
+* .mjs는 module JavaScript의미함, .eslintrc.json은 정적인 설정 파일, exlint.config.mjs는 동적인 설정도 가능
+* 라우팅은 경로를 찾아가는 과정을 의미하며 path도 경로로 번역하기 때문에 구별을 위해 대부분 라우팅으로 번역함
+* 최상위 폴더는 디렉토리로 하위 폴더는 folder로 쓰는 경우가 있음
+* segment는 라우팅과 관련이 있는 디렉토리의 별칭 정도임
+* 앱 라우터, 페이지 라우터, public 제공될 정적 리소스, src
+* Folder and file conventions : 최상위 파일은 애플리케이션 구성, 종속성 관리, 프록시 실행, 모니터링 도구 통합, 환경 변수 정의에 사용함
+* 라우팅 파일 : 경로를 노출할 페이지를 추가하고 헤더, 네비게이션, 푸터와 같은 공유 UI 레이아웃을 추가 할 수 있음 이 밖에 skeletons 로딩 화면을 추가하고 오류 경계를 표시하는 오류화면을 추가하고 API 경로를 추가할 수 있음
+* Nested routes : 디렉토리는 URL segments를 정의함 디렉토리를 중첩하면 세그먼트도 중첩됨 모든 수준의 레이아웃은 하위 세그먼트를 감쌈 페이지나 경로 파일이 존재하면 해당 경로는 공개됨
+* Dynamic routes : 대괄호를 사용하여 새그먼트를 매개변수화 할 수 있음 단일 배개변수의 경우 segment를 사용함 모든 값을 포괄하는 매개변수(catch-all)의 경우 [...sagment]를 사용함 선택적 포괄 매개변수의 경우 [[...sagment]]를 사용함 params 속성을 통해 값에 접근할 수 있음
+
 
 ## 20260902(1주차)
 * project structue, layout and pages, linking and navigating, server and client components, fetching data, css, image optimization, font optimization, deploying
