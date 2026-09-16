@@ -4,6 +4,41 @@
 3. 배운내용 & 코드
 4. 최근 날짜가 제일 위로 올라오게
 
+## 20260916(3주차)
+* Route Groups and private folders
+ - 라우트 그룹을 사용하여 URL을 변경하지 않고 코드를 정리할 수 있습니다
+ - 라우팅되지 않는 파일들은 _folder라는 비공개 디렉토리에 함께 저장합니다
+
+* Parallel(병렬) and intercepted Routes
+ - 이러한 기능은 슬롯 기반 레이아웃이나 모달 라우팅과 같은 특정 UI 패턴에 적합합니다
+ - 부모 레이아웃에서 렌더링되는 named slots에는 @slot을 사용합니다
+ - intercepte pattern을 사용하면 URL을 변경하지 않고도 레이아웃 내에서 다른 경로를 렌더링 할 수 있음
+
+* Metadata file conventions
+* Open Graph and Twitter images
+
+* Open Graph Protocol : 링크를 전달할 때 미리보기를 생성하는 프로토콜, META가 주도하는 표준화 규칙
+
+* Organizing your project
+ - Next.js는 프로젝트 파일을 어떻게 구성하고 어디에 배치할지에 대한 제약이 없음
+ - 프로젝트를 체계적으로 구성하는데 도움이 되는 몇 가지 기능을 제공
+* Component hierarchy : 특수 파일에 정의된 컴포넌트는 특정 계층 구조를 렌더링 함
+ - 리액트 오류 경계, 리액트 서스팬스 경계, 중첩 layout.js
+
+* layout와 template 차이점 : 정적과 동적
+
+* Colocation : 파일 및 폴더를 기능 별로 그룹화해서 프로젝트의 구조를 명확하게 정의하는 것
+ - app 디렉토리에서 중첩된 폴더는 라우팅 구조를 정의함
+ - 각 폴더는 URL의 해당 세그먼트에 맵핑되는 라우팅 세그먼트를 나타냄
+ - 라우트 구조가 정의되도 해당 라루트 세그먼트에 page파일 또는 라우트파일이 추가되기 전까지는 외부에서 해당 라우트에 접근할 수 있음
+
+* private folders
+* 라우팅 그룹은 다음과 같은 경우에 유용함
+ - 사이트 섹션, 목적 또는 팀별로 라우트를 구성함
+ - 동일한 라우팅 세그먼트 수준에서 중첩 레이아웃을 활성화
+
+* pnpm create next-app@latest
+
 ## 20260909(2주차)
 * app 디렉토리 생성 - layout.tsx 파일 생성(루트 레이아웃, html and body tag 추가)
 ```
