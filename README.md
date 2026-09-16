@@ -39,6 +39,19 @@
 
 * pnpm create next-app@latest
 
+* 레이아웃의 기본 구성
+ - children -> 라우트 전환 시 해당 페이지나 하위 레이아웃이 들어오는 자리
+ - matadata -> SEO 정보(title, description 등)을 Next.js가 자동으로 head에 삽입
+ - app/(group)/layout.tsx -> 특정 그룹/폴더 전용 레이아웃
+
+* Opting for loading skeletons on a specific route
+ - 로딩js 파일을 통해 특정 라우트 폴더에 로딩 스켈레톤을 적용하려면 새 라우팅 그룹을 만든 다음 해당 라우팅 그룹 내부로 로딩tsx를 이동함
+
+* Layouts and pages
+ - Creating a page
+ - Creating a layout
+ * 레이아웃은 여러 페이지에서 공유 되는 UI, 네비게이션에서 state 및 상호작용을 유지하며 다시 렌더링 되지 않음
+
 ## 20260909(2주차)
 * app 디렉토리 생성 - layout.tsx 파일 생성(루트 레이아웃, html and body tag 추가)
 ```
