@@ -4,6 +4,18 @@
 3. 배운내용 & 코드
 4. 최근 날짜가 제일 위로 올라오게
 
+## 20260923(4주차)
+* Link Component -> <Link>는 HTML <a> 요소를 확장하여 prefetching과 라우트 간 클라이언트 사이드 내비게이션 기능을 제공하는 React 컴포넌트임. Next.js에서 라우트 간 이동을 위해 주로 사용되는 방법
+* className이나 target="_blank"와 같은 <a> 태그 속성을 <Link>에 props로 추가하면 이는 내부의 <a> 요소로 전달됨
+* Creating a layout -> index페이지를 자식으로 허용하는 레이아웃을 만들려면 app 디렉토리에 layout 파일을 추가함
+ - RootLayout component는 반드시 있어야함
+
+* Creating a nested route
+ - 중첩 라우트는 다중 URL 세그먼트로 구성된 라우트임
+ - 폴더는 URL 세그먼트에 매핑되는 경로 세그먼트를 정의하는데 사용함
+ - 파일은 세그먼트에 표시되는 UI를 만드는데 사용됨
+ - 폴더를 중첩하면 중첩된 라우트를 만들 수 있음
+
 ## 20260916(3주차)
 * Route Groups and private folders
  - 라우트 그룹을 사용하여 URL을 변경하지 않고 코드를 정리할 수 있습니다
