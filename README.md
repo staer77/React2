@@ -10,11 +10,62 @@
 * Creating a layout -> index페이지를 자식으로 허용하는 레이아웃을 만들려면 app 디렉토리에 layout 파일을 추가함
  - RootLayout component는 반드시 있어야함
 
+```
+import Link from "next/link";
+
+export default function Home() {
+  return (
+    <div className="flex flex-col flex-1 items-center justify-center min-h-screen py-2">
+      <h1>Root layout</h1>
+      <div className="mt-6">
+        <Link href={{pathname: "/blog",
+          query: { name: "test", age: 30 }
+        }}>
+          Go to Blog
+        </Link>
+      </div>
+    </div>
+  );
+}
+```
+
+```
+import Link from "next/dist/client/link";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+
+  return (
+    <html lang="en">
+      <body>
+        <header>=== Root Layout Header ===</header>
+        <nav>
+          <Link href="/">Home</Link> | <Link href="/blog">Blog</Link>
+        </nav>
+        <main>{children}</main>
+        <footer>=== Root Layout Footer ===</footer>
+      </body>
+    </html>
+  );
+}
+
+```
+
 * Creating a nested route
  - 중첩 라우트는 다중 URL 세그먼트로 구성된 라우트임
  - 폴더는 URL 세그먼트에 매핑되는 경로 세그먼트를 정의하는데 사용함
  - 파일은 세그먼트에 표시되는 UI를 만드는데 사용됨
  - 폴더를 중첩하면 중첩된 라우트를 만들 수 있음
+ - 폴더 이름을 대괄호로 묵으면 데이터에서 여러 페이지를 생성하는데 사용되는 동적 경로 세그먼트가 생성됨
+
+* slug 이해
+ - async function 함수를 async로 선언해야 내부에서 await를 쓸 수 있음
+ - await을 사용하는 이유는 서버의 데이터를 읽어올 때 타임 딜레이에 의한 오류를 방지하기 위해서임
+ - 매개변수 구조 Next.js가 페이지를 호출할 때는 props 객체로 {params, searchParams, ...} 같은 값을 넘겨주는데 여기서 params만 구조 분해로 받고 있음
+ - 타입 {params: Promise<{slug: string}>}: TypeScript 타입 선언임
+ - params가 Promise(비동기 값)임을 명시함
+ - 데이터 소스가 크다면 .find는 O(n)이므로 DB쿼리로 바꿔야 함
+ - O(n)은 알고리즘의 시간 복잡도가 입력 데이터의 크기 n에 비례하여 시간이나 메모리 사용량이 선형적으로 증가하는 것을 의미
+ - params가 동기식처럼 보이지만 사실은 비동기식이라는 것을 좀더 명확히 하기 위해 사용함 코드의 가독성이 좋음 오류와 상관없이 Promise 사용을 권장함
 
 ## 20260916(3주차)
 * Route Groups and private folders
