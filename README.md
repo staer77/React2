@@ -86,6 +86,20 @@ export default async function ProductsPage({searchParams}: {
 }
 ```
 
+### 1. React vs Next.js 라우팅 방식의 차이
+
+| 항목 | React (기본) | Next.js |
+| :--- | :--- | :--- |
+| **라우팅 방식** | 수동 (사용자가 직접 설정) | 자동 (폴더/파일 기반) |
+| **라우터 도구** | `react-router-dom` 같은 외부 라이브러리 필요 | 자체 내장된 파일 기반 라우팅 시스템 |
+| **라우트 정의 방식** | 코드에서 직접 `<Route>`로 정의 | 파일/폴더 이름으로 라우트가 자동 매핑됨 |
+| **예시** | `<Route path="/about" element={<About />} />` | `pages/about.js` → `/about` 경로 자동 생성<br>`app/about/page.tsx` → `/about` 경로 자동 생성 |
+
+---
+
+- **React**는 기본적으로 라우팅 기능이 없기 때문에, 직접 라우터 라이브러리를 설치해서 라우팅을 설정해야 합니다.
+- **Next.js**는 자체적으로 라우팅 시스템을 내장하고 있습니다.
+
 ## 20260916(3주차)
 * Route Groups and private folders
  - 라우트 그룹을 사용하여 URL을 변경하지 않고 코드를 정리할 수 있습니다
