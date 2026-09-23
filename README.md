@@ -100,6 +100,10 @@ export default async function ProductsPage({searchParams}: {
 - **React**는 기본적으로 라우팅 기능이 없기 때문에, 직접 라우터 라이브러리를 설치해서 라우팅을 설정해야 합니다.
 - **Next.js**는 자체적으로 라우팅 시스템을 내장하고 있습니다.
 
+
+* page Router은 동적 라우트, getStaticProps
+* App ROuter 레이아웃 중첩, 서버 컴포넌트, 로딩 UI, 병렬 라우트
+
 ## 20260916(3주차)
 * Route Groups and private folders
  - 라우트 그룹을 사용하여 URL을 변경하지 않고 코드를 정리할 수 있습니다
