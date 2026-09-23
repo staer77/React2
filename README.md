@@ -67,6 +67,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
  - O(n)은 알고리즘의 시간 복잡도가 입력 데이터의 크기 n에 비례하여 시간이나 메모리 사용량이 선형적으로 증가하는 것을 의미
  - params가 동기식처럼 보이지만 사실은 비동기식이라는 것을 좀더 명확히 하기 위해 사용함 코드의 가독성이 좋음 오류와 상관없이 Promise 사용을 권장함
 
+ * 동적 렌더링
+  - Next.js에서 페이지는 크게 정적 또는 동적으로 렌더링 됨
+  - searchParams는 요청이 들어와야만 값을 알 수 있기 때문에, next.js는 이 페이지를 정적으로 미리 생성할 수 없고 요청이 올 대 마다 새로 렌더링 해야 함
+
+```
+export default async function ProductsPage({searchParams}: {
+  searchParams: Promise<{ id?: string; name?: string }>
+}) {
+  const {id = "non id", name = "non name"} = await searchParams;
+  return (
+    <div>
+      <h1>Products Page</h1>
+      <p>Product ID: {id}</p>
+      <p>Product Name: {name}</p>
+    </div>
+  )
+}
+```
+
 ## 20260916(3주차)
 * Route Groups and private folders
  - 라우트 그룹을 사용하여 URL을 변경하지 않고 코드를 정리할 수 있습니다
