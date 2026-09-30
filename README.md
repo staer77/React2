@@ -66,6 +66,44 @@
 - **클라이언트 측 전환은 서버에서 렌더링된 앱을 클라이언트에서 렌더링된 앱처럼 느껴지게 하는 요소입니다.**
 - 또한 **프리페칭 및 스트리밍**과 함께 사용하면 동적 경로에서도 빠른 전환이 가능합니다.
 
+# 전환을 느리게 만드는 요인은 무엇일까요?
+
+- Next.js는 최적화를 통해 네비게이션 속도가 빠르고 반응성이 뛰어납니다.
+- 하지만 **특정 조건에서는 전환 속도가 여전히 느릴 수 있습니다.**
+- 다음은 몇 가지 일반적인 원인과 사용자 경험을 개선하는 방법입니다.
+
+---
+
+## 동적 경로 없는 loading.tsx
+
+- **동적 경로로 이동할 때 클라이언트는 결과를 표시하기 전에 서버의 응답을 기다려야 합니다.**
+  - ➔ 이로 인해 사용자는 앱이 응답하지 않는다는 인상을 받을 수 있습니다.
+- **부분 프리페칭을 활성화**하고, **즉시 네비게이션을 트리거**하며, **경로가 렌더링되는 동안 로딩 UI를 표시**하려면 **동적 경로에 `loading.tsx`를 추가**하는 것이 좋습니다.
+
+## 동적 세그먼트 없는 generateStaticParams
+
+- 동적 세그먼트는 사전 렌더링될 수 있지만, **`generateStaticParams`가 누락되어 사전 렌더링되지 않는 경우**, 해당 경로는 **요청 시점에 동적 렌더링으로 대체**됩니다.
+- **`generateStaticParams`를 추가하여 빌드 시점에 경로가 정적으로 생성**되도록 합니다.
+
+```
+export async function generateStaticParams() {
+  const posts = await fetch('https://.../posts').then((res) => res.json())
+
+  return posts.map((post) => ({
+    slug: post.slug,
+  }))
+}
+
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
+  const { slug } = await params
+  // ...
+}
+```
+
 ## 20260923(4주차)
 * Link Component -> <Link>는 HTML <a> 요소를 확장하여 prefetching과 라우트 간 클라이언트 사이드 내비게이션 기능을 제공하는 React 컴포넌트임. Next.js에서 라우트 간 이동을 위해 주로 사용되는 방법
 * className이나 target="_blank"와 같은 <a> 태그 속성을 <Link>에 props로 추가하면 이는 내부의 <a> 요소로 전달됨
