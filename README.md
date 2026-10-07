@@ -4,6 +4,232 @@
 3. 배운내용 & 코드
 4. 최근 날짜가 제일 위로 올라오게
 
+## 20261007(6주차)
+* 동적 세그먼트 없는 generateStaticParams
+* 일반 함수와 객체 구조 분해 할당 매게 변수의 처리
+ - Next.js가 넘겨준 객체 중에서 매개변수를 받아 사용한다는 의미
+ - params가 promise이기 때문에 await params로 받을 수 있는 것
+* generateStaticParams() 자체는 slug 배열만 반환합니다.
+* Next.js 빌드 프로세스가 이 배열을 순회하며 ➔ 각 slug에 대해 page.tsx 실행 ➔ 정적 HTML을 생성합니다.
+* map 함수는 HTML을 작성해야 할 리스트를 Next.js에게 전달하는 역할을 합니다.
+
+# Server Component에서 `await` 없이도 `async`를 사용하는 이유
+
+Next.js App Router(13+)의 `page.tsx`와 같은 **Server Component는 비동기 렌더링을 기본 전제**로 동작하므로, 당장 `await`를 쓰지 않더라도 `async`를 선언해 두는 것이 권장됩니다.
+
+---
+
+### 핵심 요약
+
+1. **코드 일관성 유지**
+   - 페이지별로 일반 함수와 비동기 함수가 혼용되는 혼란을 방지합니다.
+   - Next.js 공식 문서의 예제 코드 패턴과 일치합니다.
+
+2. **향후 확장성 고려**
+   - 현재 더미 데이터를 사용하더라도, 추후 DB 조회나 API 연동(`fetch`) 코드가 추가될 때 함수 선언을 수정할 필요가 없습니다.
+
+3. **React Server Component(RSC) 호환성 및 성능 최적화**
+   - Server Component는 본질적으로 `Promise`를 반환할 수 있도록 설계되어 있습니다.
+   - Next.js의 렌더링 파이프라인이 `async` 함수 패턴에 맞춰 최적화되어 있어, 불필요한 오버헤드가 거의 발생하지 않습니다.
+
+# generateStaticParams 유무에 따른 차이 비교
+
+Next.js 동적 라우트에서 `generateStaticParams`의 정의 여부에 따라 렌더링 방식(동적 SSR vs 정적 SSG)과 최적화 수준이 달라집니다.
+
+---
+
+### 핵심 동작 차이
+
+- **없는 경우 (동적 렌더링 / SSR)**
+  - 빌드 시점에 `slug` 목록을 알 수 없어 사전 HTML이 생성되지 않습니다.
+  - 사용자가 페이지에 접속할 때마다 서버에서 요청을 받아 실시간으로 렌더링합니다.
+- **있는 경우 (정적 생성 / SSG)**
+  - 빌드 시점에 지정된 `slug` 목록에 맞춰 정적 HTML과 JSON을 미리 생성합니다.
+  - 최초 접근 시 서버 연산(SSR) 없이 미리 완성된 정적 페이지를 즉시 제공합니다.
+
+---
+
+### 비교 표
+
+| 항목 | `generateStaticParams` 없음 | `generateStaticParams` 있음 |
+| :--- | :--- | :--- |
+| **페이지 생성 시점** | 요청 시 서버에서 생성 (SSR / ISR) | 빌드 타임에 생성 (SSG) |
+| **초기 로딩 속도** | 서버 렌더링 필요 ➔ 상대적으로 느림 | 정적 HTML 즉시 제공 ➔ 매우 빠름 |
+| **SEO** | 가능하지만 요청 시 렌더링됨 | 매우 유리 (검색엔진이 즉시 HTML 크롤링) |
+| **유연성** | 무한한 slug 동적 지원 가능 (DB 조회 등) | 빌드 시점에 slug를 미리 알아야 함 (동적 slug는 제한적) |
+
+# 느린 네트워크
+* 체감 성능을 개선하기 위해 useLinkStatus Hook을 사용하여 전환이 진행되는 동안 사용자에게 인라인 시각적 피드백을 표시할 수 있음(ex: 링크의 스피너 or 텍스트 글리머)
+
+```
+.spinner {
+  /* ... */
+  opacity: 0;
+  animation:
+    fadeIn 500ms 100ms forwards,
+    rotate 1s linear infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+```
+# 프리페칭 비활성화
+
+- `<Link>` 컴포넌트에서 `prefetch` prop을 `false`로 설정하여 프리페치를 사용하지 않도록 선택할 수 있습니다[cite: 5].
+- 이는 대량의 링크 목록(예: 무한 스크롤 테이블)을 렌더링할 때 불필요한 리소스 사용을 방지하는 데 유용합니다[cite: 5].
+
+```tsx
+<Link href="/blog" prefetch="{false}">
+  Blog
+</Link>
+```
+
+- 그러나 프리페칭을 비활성화하면 다음과 같은 단점이 있습니다
+  - **정적 라우팅**: 사용자가 링크를 클릭할 때만 가져옵니다
+  - **동적 라우팅**: 클라이언트가 해당 경로로 이동하기 전에 서버에서 먼저 렌더링 되어야 합니다
+- 프리페치를 완전히 비활성화하지 않고 리소스 사용량을 줄이려면, **마우스 호버 시에만 프리페치를 사용**하면 됩니다
+- 이렇게 하면 뷰포트의 모든 링크가 아닌, 사용자가 방문할 가능성이 높은 경로로만 프리페치가 제한됩니다.
+
+# 하이드레이션(Hydration) 미완료 문제
+
+* <Link>는 클라이언트 컴포넌트이므로, 대상 페이지를 프리페치(prefetch)하기 전에 하이드레이션이 먼저 진행되어야 합니다.
+
+* 최초 진입 시 대용량 자바스크립트 번들로 인해 하이드레이션이 늦어지면 프리페칭 동작 또한 즉시 실행되지 못할 수 있습니다.
+
+* @next/bundle-analyzer 플러그인을 활용해 큰 비중을 차지하는 종속성을 파악하고 정리함으로써 번들 크기를 축소합니다.
+
+# Hydration이란 무엇인가?
+
+- **Hydration**이란 서버에서 생성된 HTML에 JavaScript 로직을 추가하여 동적으로 상호작용이 가능하도록 만드는 과정을 의미합니다.
+- 특히, React, Vue 등 프론트엔드 라이브러리나 프레임워크에서 많이 사용되는 용어로, 서버 사이드 렌더링(SSR)으로 생성된 정적인 HTML에 클라이언트 측에서 JavaScript를 통해 이벤트 리스너, 상태 관리 등을 주입하여 인터랙티브한 웹 페이지로 변환하는 과정을 말합니다.
+
+---
+
+## SSR과 Hydration
+
+- **SSR**은 서버에서 미리 HTML을 생성하여 사용자에게 전달하는 방식입니다.
+- 초기 로딩 속도가 빠르다는 장점이 있지만, 서버에서 생성된 HTML은 정적인 상태이므로 JavaScript 코드를 통해 동적인 상호작용을 구현하려면 추가적인 작업이 필요합니다.
+
+---
+
+## Hydration의 역할
+
+- Hydration은 SSR로 생성된 정적인 HTML에 클라이언트 측 JavaScript를 연결하여, 페이지가 로드된 후에도 사용자와의 상호작용이 가능하도록 만듭니다.
+
+```
+import Link from "next/link";
+import { posts } from "./posts";
+
+export default function Blog() {
+  return (
+    <div>
+      <main>
+        <div>
+          <h1>블로그 목록</h1>
+          <ul>
+            {posts.map((post) => (
+              <li key={post.slug}>
+                <Link href={`/blog2/${post.slug}`}>{post.title}</Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </main>
+    </div>
+  );
+}
+```
+
+```
+import { notFound } from "next/navigation";
+import { posts } from "../posts";
+
+export async function generateStaticParams() {
+  return posts.map((post) => ({
+    slug: post.slug,
+  }));
+}
+
+export default async function PostPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const post = posts.find((p) => p.slug === slug);
+
+  if (!post) {
+    notFound();
+  }
+
+  return (
+    <main className="max-w-2xl mx-auto px-4 py-8">
+      <article>
+        <h1 className="text-3xl font-bold mb-4">{post.title}</h1>
+        <p className="text-gray-500 mb-6">{post.date}</p>
+        <div className="prose">{post.content}</div>
+      </article>
+    </main>
+  );
+}
+```
+
+``` 
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+  // devIndicators: true,
+};
+
+/** @type {import('next').NextConfig} */
+
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+})
+
+module.exports = withBundleAnalyzer(nextConfig)
+
+export default nextConfig;
+```
+
+# Introduction
+
+* 기본적으로 layout과 page는 server component입니다.
+* server에서 데이터를 가져와 UI의 일부를 렌더링할 수 있고, 선택적으로 결과를 cache한 후 client로 스트리밍할 수 있습니다.
+* 상호작용이나 브라우저 API가 필요한 경우 client component를 사용하여 기능을 계층화할 수 있습니다.
+
+* 이번 장에서는 Next.js에서 server 및 client component가 작동하는 방식과 이를 사용하는 시기를 설명하고, 애플리케이션에서 이 컴포넌트를 사용하는 방법에 대한 예제를 소개 합니다.
+
+# server 및 client component
+
+- client 환경과 server 환경은 서로 다른 기능을 가지고 있습니다.
+- server 및 client component를 사용하면 사용하는 사례에 따라 각각의 환경에서 필요한 로직을 실행할 수 있습니다.
+
+- 다음과 같은 항목이 필요할 경우에는 **client component**를 사용합니다.
+  - state 및 event handler. 예: `onClick`, `onChange`.
+  - Lifecycle logic. 예: `useEffect`.
+  - 브라우저 전용 API. 예: `localStorage`, `window`, `Navigator.geolocation` 등
+  - 사용자 정의 Hook
+
+- 다음과 같은 항목이 필요할 경우에는 **server component**를 사용합니다.
+  - 서버의 데이터베이스 혹은 API에서 data를 가져오는 경우 사용합니다.
+  - API key, token 및 기타 보안 데이터를 client에 노출하지 않고 사용합니다.
+  - 브라우저로 전송되는 JavaScript의 양을 줄이고 싶을 때 사용합니다.
+  - 콘텐츠가 포함된 첫 번째 페인트(First Contentful Paint-FCP)를 개선하고, 콘텐츠를 client에 점진적으로 스트리밍합니다.
+
 ## 20260930(5주차)
 * App Router : 계층적으로 구성 가능, 렌더링되는 컴포넌트로 성능 최적화 기능
 * Server Rendering : 레이아웃과 페이지는 기본적으로 리액트 서버 컴포넌트, 서버 컴포넌트 페이로드는 클라이언트로 전송 되기 전에 서버에서 생성됨
