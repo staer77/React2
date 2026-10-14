@@ -1,17 +1,484 @@
 # 202230126 이주환
+
 1. 이름 학번 h1 제일 위에 기재
 2. 날짜(주차)
 3. 배운내용 & 코드
 4. 최근 날짜가 제일 위로 올라오게
 
+## 20261014(7주차)
+
+- server에서 데이터를 가져와 UI의 일부를 렌더링을 할 수 있고 선택적으로 결과를 cache한 후 client로 스트리밍할 수 있습니다
+
+### server 및 client component를 언제 사용해야 하나요?
+
+- client 환경과 server 환경은 서로 다른 기능을 가지고 있습니다.
+- server 및 client component를 사용하면 사용하는 사례에 따라 각각의 환경에서 필요한 로직을 실행할 수 있습니다.
+- 다음과 같은 항목이 필요할 경우에는 client component를 사용합니다.
+  - state 및 event handler. 예 onClick, onChange.
+  - Lifecycle logic. 예 useEffect.
+  - 브라우저 전용 API. 예 localStorage, window, Navigator.geolocation, 등
+  - 사용자 정의 Hook
+- 다음과 같은 항목이 필요할 경우에는 server component를 사용합니다.
+  - 서버의 데이터베이스 혹은 API에서 data를 가져오는 경우 사용합니다.
+  - API key, token 및 기타 보안 데이터를 client에 노출하지 않고 사용합니다.
+  - 브라우저로 전송되는 JavaScript의 양을 줄이고 싶을 때 사용합니다.
+  - 콘텐츠가 포함된 첫 번째 페인트(First Contentful Paint-FCP)를 개선하고, 콘텐츠를 client에 점진적으로 스트리밍합니다.
+
+- 예를 들어, `<Page>` component는 게시물에 대한 데이터를 가져와서, client 측 상호 작용을 처리하는 `<LikeButton>`에 props로 전달하는 server component입니다.
+
+### 그리고, '@/ui/like-button'은 client component이기 때문에 'use client'를 사용하고 있습니다.
+
+```
+import LikeButton from '@/app/ui/like-button'
+import { getPost } from '@/lib/data'
+
+export default async function Page({ params }: { params: { id: string } }) {
+  const post = await getPost(params.id)
+
+  return (
+    <div>
+      <main>
+        <h1>{post.title}</h1>
+        {/* ... */}
+        <LikeButton likes="{post.likes}"/>
+      </main>
+    </div>
+  )
+}
+```
+
+```
+// dummy data.tsx
+
+export const posts = [
+  { id: "nextjs", title: "Next.js 소개", content: "Next.js는 React 기반의 풀스택 프레임워크입니다.", likes: 5 },
+  { id: "routing", title: "App Router 알아보기", content: "Next.js 13부터는 App Router가 도입되었습니다.", likes: 3 },
+  { id: "ssr-ssg", title: "SSR vs SSG", content: "서버사이드 렌더링과 정적 사이트 생성의 차이를 알아봅니다.", likes: 0 },
+  { id: "dynamic-routes", title: "동적 라우팅", content: "Next.js에서 [slug]를 활용한 라우팅 방식입니다.", likes: 0 },
+];
+```
+
+```
+import LikeButton from '@/ui/like-button'
+// 문서의 import { getPost } from '@/lib/data' 대신 데이터만 직접 가져옵니다.
+import { posts } from '@/lib/data'
+import { notFound } from 'next/navigation'
+
+// 문서에서는 다음 구문을 풀어서 작성했지만 한 줄로 하는 것이 더 명확해 보입니다.
+// export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PostPage({
+  params
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params;
+
+  // posts에서 슬러그에 해당하는 포스트를 찾습니다.
+  // getPost 대신 직접 posts 배열에서 찾습니다.
+  const post = posts.find((p) => p.id === id);
+
+  if (!post) {
+    notFound();
+  }
+
+  return (
+    <div>
+      <main>
+        <h1>{post.title}</h1>
+        {/* ... */}
+        <LikeButton likes={post.likes} />
+      </main>
+    </div>
+  )
+}
+```
+
+### Optimistic Update(낙관적 업데이트) : 서버의 응답을 기다리지 않고, UI를 즉시 변경한 후 서버에 요청을 보내는 방식입니다. 만일 응답이 없으면 롤백 됩니다.
+
+```
+'use client'
+
+import { useState } from 'react'
+export default function LikeButton({ likes }: { likes: number }) {
+  // Optimistic Updates(낙관적 업데이트)
+  // 클라이언트 전용 컴포넌트 - 초기 likes 값을 받아 로컬에서 즉시 반영합니다.
+  // 서버에 저장하지 않고, 단순히 UI 상에서 좋아요 수를 증가시키는 역할을 합니다.
+  const [count, setCount] = useState<number>(likes ?? 0)
+  const [isLiking, setIsLiking] = useState(false)
+
+  const handleClick = async () => {
+    // 낙관적 업데이트
+    setIsLiking(true)
+    setCount((c) => c + 1)
+
+    // 실제 저장 로직(API 호출 등)이 있다면 이곳에서 호출할 수 있습니다.
+    // 예: await fetch('/api/like', { method: 'POST', body: JSON.stringify({ id }) })
+
+    // 예제에서는 짧은 지연 후 버튼 상태만 해제합니다.
+    setTimeout(() => setIsLiking(false), 300)
+  }
+
+  return (
+    <button onClick={handleClick} disabled={isLiking} aria-pressed={false}>
+      👍 {count}
+    </button>
+  )
+}
+```
+
+# Optimistic Update
+
+[ Optimistic Update(낙관적 업데이트) ]
+
+### 사용자에 의해서 이벤트(예: 좋아요 버튼 클릭)가 발생 하면, 서버 응답을 기다리지 않고 클라이언트(브라우저)의 UI를 즉시 변경(업데이트)합니다.
+
+### 서버에 보낸 요청의 성공을 낙관(optimistic)한다고 가정해서 먼저 화면에 변화를 보여줍니다.
+
+### 서버에서 응답이 없으면, UI를 원래 상태로 되돌립니다(rollback).
+
+### 네트워크 지연 동안에도 앱이 "빠르게 반응"하도록 느끼게 하는 것이 목적입니다.
+
+(장점)
+
+- 서버 응답 속도와 관계없이 즉각적인 피드백을 제공하여 사용자 경험을 향상시킵니다.
+- 네트워크 상태가 나쁘거나 응답 시간이 길어도 사용자에게 체감되는 속도가 빠릅니다.
+
+(단점)
+
+- 서버에서 오류가 발생하면, 사용자에게는 잠시 동안 잘못된 정보가 표시될 수 있습니다.
+- 오류 발생 시 복구 로직이 필요합니다.
+
+# Pessimistic Update
+
+[ Pessimistic Update(비관적 업데이트) ]
+
+### 이벤트가 발행하면 먼저 서버에 요청을 보내고, 서버에서 성공 응답을 받은 후에 클라이언트의 UI를 업데이트합니다.
+
+(장점)
+
+- 서버의 응답을 기반으로 하기 때문에 데이터의 일관성이 보장됩니다.
+- 오류가 발생할 가능성이 낮고, 잘못된 정보가 표시될 염려가 없습니다.
+
+(단점)
+
+- 사용자는 서버의 응답을 기다려야 하므로, 응답이 늦어지면 사용자 경험이 저하될 수 있습니다.
+- 특히 네트워크 지연이 발생할 경우 체감 속도가 느려집니다.
+
+| 구분             | 낙관적 업데이트        | 비관적 업데이트       |
+| :--------------- | :--------------------- | :-------------------- |
+| UI 업데이트 시점 | 요청 직후 즉시         | 서버 응답을 받은 후   |
+| 응답 실패 시     | 원래 상태로 롤백       | UI 변경 없음          |
+| 속도 및 반응성   | 빠름                   | 상대적으로 느림       |
+| 적용 예시        | 좋아요 버튼, 댓글 작성 | 데이터 조회 후 렌더링 |
+
+### @/ui/like-button.tsx에서는 state를 2개 사용하고 있습니다.
+
+```
+const [count, setCount] = useState<number>(likes ?? 0)
+const [isLiking, setIsLiking] = useState(false)
+```
+
+### count는 like 버튼을 클릭한 횟수 입니다. (초기값 : data의 like 필드)
+
+### isLiking은 "서버에 요청이 진행 중인지"를 나타내는 state입니다. (초기값 : false)
+
+# [ isLiking state의 주요 역할 ]
+
+### 중복 클릭 방지 : isLiking이 true인 동안은 버튼을 disabled로 만들어 중복 요청 즉, 중복 낙관적 업데이트를 막는 역할을 합니다.
+
+### UI 피드백 : 로딩 상태 표시(스피너나 문구)를 위해 사용이 가능합니다.
+
+### 상태 안정화 : 서버에 요청이 끝날 때까지 추가 상태 변경을 잠시 멈추게 해서, 일관된 동작을 보장합니다.
+
+### count는 like 버튼을 클릭한 횟수 라고 했지만 (likes)가 아닌 (like ?? 0)로 작성한 이유는 무엇일까요?
+
+```
+const [count, setCount] = useState<number>(likes ?? 0)
+```
+
+[ Null 병합 연산자(Nullish Coalescing Operator) ]
+
+### 왼쪽 피연산자가 null 또는 undefined이면 오른쪽 값을 반환하고, 그렇지 않으면 왼쪽 값을 그대로 반환합니다.
+
+-> 즉 likes의 값이 null이나 undefined이면 0을 반환하고, 값이 있으면 그 값을 그대로 반환합니다.
+
+### or 연산자(||)와는 어떤 차이가 있을까?
+
+### or 연산자는 falsy 값(false, 0, "", null, undefined 등)을 전부 오른쪽 값으로 대체합니다.
+
+## 문서의 코드를 완성해 봅시다. like-button.tsx
+
+### 'Falsy'는 프로그래밍 언어, 특히 JavaScript에서 조건문이나 논리 연산 등 불리언(Boolean) 값이 필요한 맥락에서 false로 평가되는 값들을 의미합니다.
+
+- false 값 뿐만 아니라 다양한 false에 해당하는 값들을 포괄하는 개념입니다.
+- 거짓 같은 값(Falsy 혹은 falsey)은 Boolean 문맥에서 false 로 평가되는 값입니다.
+
+[ Falsy 값의 예시 ]
+
+1. false: 불리언 false 값 그 자체
+
+2. 0 (숫자): 0은 false로 취급됩니다.
+
+3. '' (빈 문자열): 문자열은 비어 있는 경우 false로 간주됩니다.
+
+4. null: 값이 없음을 의도적으로 명시할 때 사용되는 값입니다. (개발자가 할당)
+
+5. undefined: 값이 할당되지 않았을 때 사용되는 값입니다. (시스템에 의해 자동 부여)
+
+6. NaN: Not-a-Number, 즉 숫자가 아님을 나타내는 값입니다.
+
+### Null 병합 연산자와 or 연산자를 테스트 해봅니다. like-button.tsx
+
+### 먼저 Null 병합 연산자 테스트를 위해서 data.tsx의 likes값 중 하나를 false로 바꿔서 테스트해 봅니다.
+
+-> 아무것도 반환하지 않아야 정상입니다. reflash(F5)해줘야 정상동작 합니다.
+-> {count}부분에 아무것도 표시되지 않습니다.
+
+### 다음으로 or를 테스트하기 위해서 LikeButton 컴포넌트의 ??연산자를 or로 바꿔줍니다.
+
+-> 위에서 false로 수정한 링크를 호출하면 0이 반환됩니다. 빈 문자열('')로 수정해도 결과는 동일 합니다.
+-> or연산자는 falsy값이 적용되기 때문입니다.
+
+### Optimistic Update(낙관적 업데이트) : 서버의 응답을 기다리지 않고, UI를 즉시 변경한 후 서버에 요청을 보내는 방식입니다. 만일 응답이 없으면 롤백 됩니다.
+
+```
+// src > ui > like-button.tsx > LikeButton
+'use client'
+
+import { useState } from 'react'
+
+export default function LikeButton({ likes }: { likes: number }) {
+  // Optimistic Updates(낙관적 업데이트)
+  // 클라이언트 전용 컴포넌트 - 초기 likes 값을 받아 로컬에서 즉시 반영합니다.
+  // 서버에 저장하지 않고, 단순히 UI 상에서 좋아요 수를 증가시키는 역할을 합니다.
+  const [count, setCount] = useState<number>(likes ?? 0)
+  const [isLiking, setIsLiking] = useState(false)
+
+  const handleClick = async () => {
+    // 낙관적 업데이트
+    setIsLiking(true)
+    setCount((c) => c + 1)
+
+    // 실제 저장 로직(API 호출 등)이 있다면 이곳에서 호출할 수 있습니다.
+    // 예: await fetch('/api/like', { method: 'POST', body: JSON.stringify({ id }) })
+
+    // 예제에서는 짧은 지연 후 버튼 상태만 해제합니다.
+    setTimeout(() => setIsLiking(false), 300)
+  }
+
+  return (
+    <button onClick={handleClick} disabled={isLiking} aria-pressed={false}>
+      👍 {count}
+    </button>
+  )
+}
+```
+
+### 버튼을 클릭하면 handleClick이 호출되며, isLiking state를 true로, count state를 +1 변경해 줍니다.
+
+### line20에서 네트워크 시뮬레이션을 위해 isLiking state를 300ms동안 true를 유지해 줍니다.
+
+### 즉, 버튼이 중복 클릭되는 것을 네트워크에 연결될 때까지 disable로 유지하기 위한 시뮬레이션 입니다.
+
+### 테스트 할 때는 300ms로는 힘들기 때문에 3000ms 정도로 조정해서 테스트 하는 것이 좋습니다. -> 3초 동안은 클릭해도 반응이 없습니다.
+
+```
+const handleClick = async () => {
+  // 낙관적 업데이트
+  setIsLiking(true)
+  setCount((c) => c + 1)
+
+  // 실제 저장 로직(API 호출 등)이 있다면 이곳에서 호출할 수 있습니다.
+  // 예: await fetch('/api/like', { method: 'POST', body: JSON.stringify({ id }) })
+
+  // 예제에서는 짧은 지연 후 버튼 상태만 해제합니다.
+  setTimeout(() => setIsLiking(false), 300)
+}
+```
+
+## 2. Next.js에서 server와 client component는 어떻게 작동합니까?
+
+### 2-1. server component의 작동
+
+- Next.js는 server에서 React의 API를 사용하여 렌더링을 조정합니다.
+- 렌더링 작업은 개별 라우팅 세그먼트 별 묶음(Chunk)으로 나뉩니다. ( layout 및 page )
+
+- server component는 RSC Payload(React Server Component Payload)라는 특수한 데이터 형식으로 렌더링 됩니다.
+- client component 와 RSC Payload는 HTML을 미리 렌더링(prerender)하는데 사용됩니다.
+
+### React Server Component Payload(RSC)란 무엇인가요?
+
+- RSC 페이로드는 렌더링된 React Server Components 트리를 직렬화하여 표현한 컴팩트한 형태입니다.
+- client에서 React가 브라우저의 DOM을 업데이트하는데 사용됩니다.
+
+* RSC 페이로드에는 다음 내용이 포함됩니다.
+  - server component의 렌더링 결과
+  - client component가 렌더링될 위치 및 해당 JavaScript 파일 참조를 위한 자리 표시자(Placeholder)
+  - server component에서 client component로 전달되는 모든 props
+
+* RSC(RSC Payload)는 JSON인가, 바이너리인가?
+
+과거 : JSON 기반
+
+- RSC 초기에는 JSON 형식의 문자열로 데이터를 전달했습니다.
+- 예: { type: "component", props: { title: "Hello" } }
+
+현재: 바이너리 형식으로 최적화
+
+- 최신 React, 특히 Next.js App Router는 RSC payload를 compact binary format으로 전송합니다.
+- JSON이 아니라, React 전용 이진 포맷으로 스트림(stream)을 통해 전달됩니다.
+- 이 방식은 JSON보다 용량이 작고, 빠르게 파싱할 수 있습니다.
+
+- Serialization(직렬화)은 메모리 안에 존재하는 복잡한 객체나 데이터 구조를 네트워크로 전송하거나 파일로 저장할 수 있도록 연속적인 바이트(Byte) 또는 문자열(텍스트) 형태로 변환하는 과정입니다.(ex: 컴파일 비슷)
+
+* 컴퓨터 메모리(RAM) 상의 객체는 단순히 값만 들어있는 것이 아니라 메모리 주소(참조값, 포인터)를 통해 서로 얽혀 있습니다.
+* 네트워크 전송 불가: 서버 메모리의 특정 주소값(0x7ffe...)은 클라이언트 브라우저의 메모리에서는 아무런 의미가 없습니다.
+* 저장 불가: 프로그램을 종료하면 메모리의 참조 관계는 전부 사라집니다.
+* 따라서 서로 다른 시스템(서버 ↔ 브라우저) 간에 데이터를 주고받거나 디스크에 저장하려면, 주소값에 의존하지 않는 규격화된 1차원 데이터 형태로 납작하게 펴서 보내야 합니다.
+
+- 그 반대로 변환된 데이터를 다시 원래의 메모리 객체 구조로 복원하는 것을 역직렬화(Deserialization)라고 부릅니다.
+
+# RSC(RSC Payload)는 JSON인가, 바이너리인가?
+
+### 왜 JSON 대신 바이너리를 쓸까?
+
+| 비교 항목       | JSON                 | Binary (RSC)                          |
+| :-------------- | :------------------- | :------------------------------------ |
+| **크기**        | 크다                 | 작다 (compact)                        |
+| **파싱 속도**   | 느리다 (문자열 파싱) | 빠르다 (스트림 + 이진 파싱)           |
+| **구조 표현력** | 제한적 (문자만)      | 더 복잡한 참조 및 내부 구조 표현 가능 |
+| **RSC 최적화**  | -                    | 최적화됨                              |
+
+### React는 컴포넌트 구조, props, 서버에서 생성된 UI 정보를 RSC 프로토콜로 정의하고, 이를 전송하는 것에 특화된 이진 형식을 사용합니다.
+
+### 어떻게 이진이 브라우저에서 처리될까?
+
+### React가 server에서 만든 UI 트리를 바이너리 스트림으로 client에 전달합니다.
+
+### client 측 React는 이를 해석해 UI를 재구성합니다.
+
+### Next.js는 이 작업을 자동으로 처리하기 때문에 개발자는 신경 쓰지 않아도 됩니다.
+
+### client component의 작동(첫 번째 load)
+
+1. **HTML**은 사용자에게 경로(라우팅 페이지)의 비대화형(정적) 미리보기를 즉시 보여주는데 사용됩니다.
+
+2. **RSC 페이로드**는 client와 server component 트리를 조정하는데 사용됩니다.
+
+3. **JavaScript**는 client component를 hydration하고, 애플리케이션을 대화형으로 만드는 데 사용됩니다.
+
+### Hydration이란 무엇인가?
+
+- Hydration은 이벤트 핸들러를 DOM에 연결하여 정적 HTML을 인터랙티브하게 만드는 React의 프로세스입니다.
+
+#### 후속 네비게이션 (Subsequent Navigation)
+
+후속 탐색을 할 때 :
+
+- **RSC 페이로드**는 즉시 탐색할 수 있도록 prefetch 및 cache됩니다.
+- **client component**는 server에서 렌더링된 HTML 없이 전적으로 client에서 렌더링됩니다.
+
+#### 3-1. client component 사용
+
+- 파일의 맨 위, 즉 import문 위에 `"use client"` 지시문을 추가하여 client component를 생성할 수 있습니다.
+- `"use client"`는 server와 client 모듈 트리 사이의 경계를 선언하는 데 사용됩니다.
+- 파일에 `"use client"`로 표시되면 해당 파일의 모든 import와 자식 component는 client 번들의 일부로 간주됩니다.
+- 즉, client를 대상으로 하는 모든 component에 이 지시문을 추가할 필요가 없습니다.
+
+```
+// app/ui/counter.tsx
+"use client";
+
+import { useState } from "react";
+
+export default function Counter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <p>{count} likes</p>
+      <button onClick={() => setCount(count + 1)}>Click me</button>
+    </div>
+  );
+}
+```
+
+```
+// src > components > counter.tsx > Counter
+'use client'
+
+import { useState } from 'react'
+
+export default function Counter() {
+  const [count, setCount] = useState(0)
+
+  return (
+    <div>
+      <p>{count} likes</p>
+      <button onClick={() => setCount(count + 1)}>Click me</button>
+    </div>
+  )
+}
+```
+
+```
+// src > app > counter > page.tsx > CounterPage
+import Counter from '@/components/counter';
+
+export default function CounterPage() {
+  return (
+    <div>
+      <h1>Counter Page</h1>
+      <Counter/>
+    </div>
+  );
+}
+```
+
+```
+// src > app > layout.tsx > RootLayout
+import Link from "next/link";
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body>
+        <header>
+          <p>=== Root Layout Header ===</p>
+          <nav>
+            <Link href="/">Home</Link> | <Link href="/counter">Counter</Link><br /><br />
+            Slug Page Menu :&nbsp;
+            <Link href="/nextjs">nextjs</Link>&nbsp;|&nbsp;
+            <Link href="/routing">routing</Link>&nbsp;|&nbsp;
+            <Link href="/ssr-ssg">ssr-ssg</Link>&nbsp;|&nbsp;
+            <Link href="/dynamic-routes">dynamic-routes</Link>
+          </nav>
+        </header>
+        <main>
+          {children}
+        </main>
+        <footer>=== Root Layout Footer ===</footer>
+      </body>
+    </html>
+  );
+}
+```
+
 ## 20261007(6주차)
-* 동적 세그먼트 없는 generateStaticParams
-* 일반 함수와 객체 구조 분해 할당 매게 변수의 처리
- - Next.js가 넘겨준 객체 중에서 매개변수를 받아 사용한다는 의미
- - params가 promise이기 때문에 await params로 받을 수 있는 것
-* generateStaticParams() 자체는 slug 배열만 반환합니다.
-* Next.js 빌드 프로세스가 이 배열을 순회하며 ➔ 각 slug에 대해 page.tsx 실행 ➔ 정적 HTML을 생성합니다.
-* map 함수는 HTML을 작성해야 할 리스트를 Next.js에게 전달하는 역할을 합니다.
+
+- 동적 세그먼트 없는 generateStaticParams
+- 일반 함수와 객체 구조 분해 할당 매게 변수의 처리
+
+* Next.js가 넘겨준 객체 중에서 매개변수를 받아 사용한다는 의미
+* params가 promise이기 때문에 await params로 받을 수 있는 것
+
+- generateStaticParams() 자체는 slug 배열만 반환합니다.
+- Next.js 빌드 프로세스가 이 배열을 순회하며 ➔ 각 slug에 대해 page.tsx 실행 ➔ 정적 HTML을 생성합니다.
+- map 함수는 HTML을 작성해야 할 리스트를 Next.js에게 전달하는 역할을 합니다.
 
 # Server Component에서 `await` 없이도 `async`를 사용하는 이유
 
@@ -51,44 +518,48 @@ Next.js 동적 라우트에서 `generateStaticParams`의 정의 여부에 따라
 
 ### 비교 표
 
-| 항목 | `generateStaticParams` 없음 | `generateStaticParams` 있음 |
-| :--- | :--- | :--- |
-| **페이지 생성 시점** | 요청 시 서버에서 생성 (SSR / ISR) | 빌드 타임에 생성 (SSG) |
-| **초기 로딩 속도** | 서버 렌더링 필요 ➔ 상대적으로 느림 | 정적 HTML 즉시 제공 ➔ 매우 빠름 |
-| **SEO** | 가능하지만 요청 시 렌더링됨 | 매우 유리 (검색엔진이 즉시 HTML 크롤링) |
-| **유연성** | 무한한 slug 동적 지원 가능 (DB 조회 등) | 빌드 시점에 slug를 미리 알아야 함 (동적 slug는 제한적) |
+| 항목                 | `generateStaticParams` 없음             | `generateStaticParams` 있음                            |
+| :------------------- | :-------------------------------------- | :----------------------------------------------------- |
+| **페이지 생성 시점** | 요청 시 서버에서 생성 (SSR / ISR)       | 빌드 타임에 생성 (SSG)                                 |
+| **초기 로딩 속도**   | 서버 렌더링 필요 ➔ 상대적으로 느림      | 정적 HTML 즉시 제공 ➔ 매우 빠름                        |
+| **SEO**              | 가능하지만 요청 시 렌더링됨             | 매우 유리 (검색엔진이 즉시 HTML 크롤링)                |
+| **유연성**           | 무한한 slug 동적 지원 가능 (DB 조회 등) | 빌드 시점에 slug를 미리 알아야 함 (동적 slug는 제한적) |
 
 # 느린 네트워크
-* 체감 성능을 개선하기 위해 useLinkStatus Hook을 사용하여 전환이 진행되는 동안 사용자에게 인라인 시각적 피드백을 표시할 수 있음(ex: 링크의 스피너 or 텍스트 글리머)
+
+- 체감 성능을 개선하기 위해 useLinkStatus Hook을 사용하여 전환이 진행되는 동안 사용자에게 인라인 시각적 피드백을 표시할 수 있음(ex: 링크의 스피너 or 텍스트 글리머)
 
 ```
+
 .spinner {
-  /* ... */
-  opacity: 0;
-  animation:
-    fadeIn 500ms 100ms forwards,
-    rotate 1s linear infinite;
+/_ ... _/
+opacity: 0;
+animation:
+fadeIn 500ms 100ms forwards,
+rotate 1s linear infinite;
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+from {
+opacity: 0;
+}
+to {
+opacity: 1;
+}
 }
 
 @keyframes rotate {
-  to {
-    transform: rotate(360deg);
-  }
+to {
+transform: rotate(360deg);
 }
+}
+
 ```
+
 # 프리페칭 비활성화
 
-- `<Link>` 컴포넌트에서 `prefetch` prop을 `false`로 설정하여 프리페치를 사용하지 않도록 선택할 수 있습니다[cite: 5].
-- 이는 대량의 링크 목록(예: 무한 스크롤 테이블)을 렌더링할 때 불필요한 리소스 사용을 방지하는 데 유용합니다[cite: 5].
+- `<Link>` 컴포넌트에서 `prefetch` prop을 `false`로 설정하여 프리페치를 사용하지 않도록 선택할 수 있습니다
+- 이는 대량의 링크 목록(예: 무한 스크롤 테이블)을 렌더링할 때 불필요한 리소스 사용을 방지하는 데 유용합니다
 
 ```tsx
 <Link href="/blog" prefetch="{false}">
@@ -104,11 +575,11 @@ Next.js 동적 라우트에서 `generateStaticParams`의 정의 여부에 따라
 
 # 하이드레이션(Hydration) 미완료 문제
 
-* <Link>는 클라이언트 컴포넌트이므로, 대상 페이지를 프리페치(prefetch)하기 전에 하이드레이션이 먼저 진행되어야 합니다.
+- <Link>는 클라이언트 컴포넌트이므로, 대상 페이지를 프리페치(prefetch)하기 전에 하이드레이션이 먼저 진행되어야 합니다.
 
-* 최초 진입 시 대용량 자바스크립트 번들로 인해 하이드레이션이 늦어지면 프리페칭 동작 또한 즉시 실행되지 못할 수 있습니다.
+- 최초 진입 시 대용량 자바스크립트 번들로 인해 하이드레이션이 늦어지면 프리페칭 동작 또한 즉시 실행되지 못할 수 있습니다.
 
-* @next/bundle-analyzer 플러그인을 활용해 큰 비중을 차지하는 종속성을 파악하고 정리함으로써 번들 크기를 축소합니다.
+- @next/bundle-analyzer 플러그인을 활용해 큰 비중을 차지하는 종속성을 파악하고 정리함으로써 번들 크기를 축소합니다.
 
 # Hydration이란 무엇인가?
 
@@ -186,7 +657,7 @@ export default async function PostPage({
 }
 ```
 
-``` 
+```
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -207,11 +678,11 @@ export default nextConfig;
 
 # Introduction
 
-* 기본적으로 layout과 page는 server component입니다.
-* server에서 데이터를 가져와 UI의 일부를 렌더링할 수 있고, 선택적으로 결과를 cache한 후 client로 스트리밍할 수 있습니다.
-* 상호작용이나 브라우저 API가 필요한 경우 client component를 사용하여 기능을 계층화할 수 있습니다.
+- 기본적으로 layout과 page는 server component입니다.
+- server에서 데이터를 가져와 UI의 일부를 렌더링할 수 있고, 선택적으로 결과를 cache한 후 client로 스트리밍할 수 있습니다.
+- 상호작용이나 브라우저 API가 필요한 경우 client component를 사용하여 기능을 계층화할 수 있습니다.
 
-* 이번 장에서는 Next.js에서 server 및 client component가 작동하는 방식과 이를 사용하는 시기를 설명하고, 애플리케이션에서 이 컴포넌트를 사용하는 방법에 대한 예제를 소개 합니다.
+- 이번 장에서는 Next.js에서 server 및 client component가 작동하는 방식과 이를 사용하는 시기를 설명하고, 애플리케이션에서 이 컴포넌트를 사용하는 방법에 대한 예제를 소개 합니다.
 
 # server 및 client component
 
@@ -231,40 +702,48 @@ export default nextConfig;
   - 콘텐츠가 포함된 첫 번째 페인트(First Contentful Paint-FCP)를 개선하고, 콘텐츠를 client에 점진적으로 스트리밍합니다.
 
 ## 20260930(5주차)
-* App Router : 계층적으로 구성 가능, 렌더링되는 컴포넌트로 성능 최적화 기능
-* Server Rendering : 레이아웃과 페이지는 기본적으로 리액트 서버 컴포넌트, 서버 컴포넌트 페이로드는 클라이언트로 전송 되기 전에 서버에서 생성됨
- - 정적 렌더링은 빌드 시점이나 재검증 중에 발생하여 결과는 cache 됨
- - 동적 렌더링은 클라이언트 요청에 대한 응답으로 요청 시점에 발생함
- - 서버 렌더링의 단점은 클라이언트가 새 경로를 표시하기 전에 서버의 응답을 기다려야 한다는 것
- - 사용자가 방문할 가능성이 높은 경로를 prefetching, client-side transitions 수행하여 지연 문제 해결
 
-* HTML is also generated for the initial visit
- - 일반적인 리액트 앱은 클라이언트 사이드 렌더링(CSR)만 사용하면 처음 페이지를 방문할 때 빈 HTML+ JAVAScript 파일만 내려주고 브라우저가 JS를 실행해야 화면이 렌더링됨
+- App Router : 계층적으로 구성 가능, 렌더링되는 컴포넌트로 성능 최적화 기능
+- Server Rendering : 레이아웃과 페이지는 기본적으로 리액트 서버 컴포넌트, 서버 컴포넌트 페이로드는 클라이언트로 전송 되기 전에 서버에서 생성됨
 
-* next.js에서는 사용자가 특정 URL을 처음 방문하면 서버가 해당 페이지의 HTML을 미리 생성해서 브라우저에 전달함 따라서 브라우저는 JS 실행 전에도 즉시 보이는 HTML 뼈대 + 콘텐츠를 표시할 수 있음 이후에 리액트가 Hydration 과정을 거쳐 상호작용이 가능해짐
- - 초기 방문 시에도 HTML을 생성하여 내려주기 때문에 UX가 좋아지고 SEO에도 유리하다
+* 정적 렌더링은 빌드 시점이나 재검증 중에 발생하여 결과는 cache 됨
+* 동적 렌더링은 클라이언트 요청에 대한 응답으로 요청 시점에 발생함
+* 서버 렌더링의 단점은 클라이언트가 새 경로를 표시하기 전에 서버의 응답을 기다려야 한다는 것
+* 사용자가 방문할 가능성이 높은 경로를 prefetching, client-side transitions 수행하여 지연 문제 해결
 
-* Prefetching은 사용자가 해당 경로를 이동하기 전에 백그라운드에서 해당 경로를 로드하는 프로세스
- - 사용자가 링크를 클릭하기 전에 다음 경로를 렌더링하는 데 필요한 데이터가 클라이언트측에 이미 준비되어 있기 때문에 애플리케이션에서 경로 간 이동이 즉각적으로 느껴짐
- - <a> tag를 사용하면 프래패칭 안 함
- - 정적 경로 : 전체 경로가 프리페치 됨
- - 동적 경로 : 프리페치를 건너뛰거나, loading.tsx가 있는 경우 경로가 부분적으로 프리페칭 됨, 동적 경로에 대한 네비게이션 환경을 개선하려면 스트리밍을 사용할 수 있음
+- HTML is also generated for the initial visit
 
-* Streaming : 스트리밍을 사용하면 서버가 전체 경로가 렌더링될 때까지 기다리지 않고, 동적 경로의 일부 준비되는 즉시 클라이언트를 할 수 있음
- - 미리 가져온 대체 UI는 경로가 로드되는 동안 표시되고 준비가 되면 실제 콘텐츠로 대체됨
- - <Suspense>를 사용하여 중첩된 컴포넌트에 대한 로딩 UI를 만둘 수도 있음
- - loading.tsx 이점 : 개선된 핵심 웹 핵심 지표는 TTFB, FCP 및 TTI
- - 네비게이션 환경을 더욱 개선하기 위해 next.js는 <Link> 컴포넌트를 사용하여 클라이언트측 전환을 수행함
+* 일반적인 리액트 앱은 클라이언트 사이드 렌더링(CSR)만 사용하면 처음 페이지를 방문할 때 빈 HTML+ JAVAScript 파일만 내려주고 브라우저가 JS를 실행해야 화면이 렌더링됨
 
-* Core Web Vital
- - Largest Contentful Paint : 뷰포트 내에서 가장 큰 페이지 요소를 표시하는데 걸리는 시간
- - First Input Delay : 사용자가 웹페이지와 상호작용을 시도한느 첫 번째 순간부터 웹페이지가 응답하는 시간
- - Cumulative Layout Shift : 방문자에게 콘텐츠가 얼마나 불안정한 지 측정한 값. 페이지에서 갑자기 발생하는 레이아웃의 변경이 얼마나 일어나는지 측정함. 즉 레이아웃 이동 빈도를 측정
+- next.js에서는 사용자가 특정 URL을 처음 방문하면 서버가 해당 페이지의 HTML을 미리 생성해서 브라우저에 전달함 따라서 브라우저는 JS 실행 전에도 즉시 보이는 HTML 뼈대 + 콘텐츠를 표시할 수 있음 이후에 리액트가 Hydration 과정을 거쳐 상호작용이 가능해짐
 
-* Shared Layout Remain Interactve And Navigation is Interruptible
-- **Next.js App Router에서는 `layout.tsx`가 여러 페이지 간에 공유(Shared)됩니다.**
+* 초기 방문 시에도 HTML을 생성하여 내려주기 때문에 UX가 좋아지고 SEO에도 유리하다
+
+- Prefetching은 사용자가 해당 경로를 이동하기 전에 백그라운드에서 해당 경로를 로드하는 프로세스
+
+* 사용자가 링크를 클릭하기 전에 다음 경로를 렌더링하는 데 필요한 데이터가 클라이언트측에 이미 준비되어 있기 때문에 애플리케이션에서 경로 간 이동이 즉각적으로 느껴짐
+* <a> tag를 사용하면 프래패칭 안 함
+* 정적 경로 : 전체 경로가 프리페치 됨
+* 동적 경로 : 프리페치를 건너뛰거나, loading.tsx가 있는 경우 경로가 부분적으로 프리페칭 됨, 동적 경로에 대한 네비게이션 환경을 개선하려면 스트리밍을 사용할 수 있음
+
+- Streaming : 스트리밍을 사용하면 서버가 전체 경로가 렌더링될 때까지 기다리지 않고, 동적 경로의 일부 준비되는 즉시 클라이언트를 할 수 있음
+
+* 미리 가져온 대체 UI는 경로가 로드되는 동안 표시되고 준비가 되면 실제 콘텐츠로 대체됨
+* <Suspense>를 사용하여 중첩된 컴포넌트에 대한 로딩 UI를 만둘 수도 있음
+* loading.tsx 이점 : 개선된 핵심 웹 핵심 지표는 TTFB, FCP 및 TTI
+* 네비게이션 환경을 더욱 개선하기 위해 next.js는 <Link> 컴포넌트를 사용하여 클라이언트측 전환을 수행함
+
+- Core Web Vital
+
+* Largest Contentful Paint : 뷰포트 내에서 가장 큰 페이지 요소를 표시하는데 걸리는 시간
+* First Input Delay : 사용자가 웹페이지와 상호작용을 시도한느 첫 번째 순간부터 웹페이지가 응답하는 시간
+* Cumulative Layout Shift : 방문자에게 콘텐츠가 얼마나 불안정한 지 측정한 값. 페이지에서 갑자기 발생하는 레이아웃의 변경이 얼마나 일어나는지 측정함. 즉 레이아웃 이동 빈도를 측정
+
+- Shared Layout Remain Interactve And Navigation is Interruptible
+
+* **Next.js App Router에서는 `layout.tsx`가 여러 페이지 간에 공유(Shared)됩니다.**
   - 예: `/blog/page.tsx`와 `/blog/[slug]/page.tsx` 모두 `blog/layout.tsx`를 공유
-- **페이지 이동 시 `layout.tsx`는 다시 리렌더링되지 않고 그대로 유지**되기 때문에 사이드바, 네비게이션 메뉴, 음악 플레이어 같은 UI가 새 페이지 로딩 중에도 계속 동작합니다.
+* **페이지 이동 시 `layout.tsx`는 다시 리렌더링되지 않고 그대로 유지**되기 때문에 사이드바, 네비게이션 메뉴, 음악 플레이어 같은 UI가 새 페이지 로딩 중에도 계속 동작합니다.
 
 ---
 
@@ -331,10 +810,12 @@ export default async function Page({
 ```
 
 ## 20260923(4주차)
-* Link Component -> <Link>는 HTML <a> 요소를 확장하여 prefetching과 라우트 간 클라이언트 사이드 내비게이션 기능을 제공하는 React 컴포넌트임. Next.js에서 라우트 간 이동을 위해 주로 사용되는 방법
-* className이나 target="_blank"와 같은 <a> 태그 속성을 <Link>에 props로 추가하면 이는 내부의 <a> 요소로 전달됨
-* Creating a layout -> index페이지를 자식으로 허용하는 레이아웃을 만들려면 app 디렉토리에 layout 파일을 추가함
- - RootLayout component는 반드시 있어야함
+
+- Link Component -> <Link>는 HTML <a> 요소를 확장하여 prefetching과 라우트 간 클라이언트 사이드 내비게이션 기능을 제공하는 React 컴포넌트임. Next.js에서 라우트 간 이동을 위해 주로 사용되는 방법
+- className이나 target="\_blank"와 같은 <a> 태그 속성을 <Link>에 props로 추가하면 이는 내부의 <a> 요소로 전달됨
+- Creating a layout -> index페이지를 자식으로 허용하는 레이아웃을 만들려면 app 디렉토리에 layout 파일을 추가함
+
+* RootLayout component는 반드시 있어야함
 
 ```
 import Link from "next/link";
@@ -376,26 +857,29 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ```
 
-* Creating a nested route
- - 중첩 라우트는 다중 URL 세그먼트로 구성된 라우트임
- - 폴더는 URL 세그먼트에 매핑되는 경로 세그먼트를 정의하는데 사용함
- - 파일은 세그먼트에 표시되는 UI를 만드는데 사용됨
- - 폴더를 중첩하면 중첩된 라우트를 만들 수 있음
- - 폴더 이름을 대괄호로 묵으면 데이터에서 여러 페이지를 생성하는데 사용되는 동적 경로 세그먼트가 생성됨
+- Creating a nested route
 
-* slug 이해
- - async function 함수를 async로 선언해야 내부에서 await를 쓸 수 있음
- - await을 사용하는 이유는 서버의 데이터를 읽어올 때 타임 딜레이에 의한 오류를 방지하기 위해서임
- - 매개변수 구조 Next.js가 페이지를 호출할 때는 props 객체로 {params, searchParams, ...} 같은 값을 넘겨주는데 여기서 params만 구조 분해로 받고 있음
- - 타입 {params: Promise<{slug: string}>}: TypeScript 타입 선언임
- - params가 Promise(비동기 값)임을 명시함
- - 데이터 소스가 크다면 .find는 O(n)이므로 DB쿼리로 바꿔야 함
- - O(n)은 알고리즘의 시간 복잡도가 입력 데이터의 크기 n에 비례하여 시간이나 메모리 사용량이 선형적으로 증가하는 것을 의미
- - params가 동기식처럼 보이지만 사실은 비동기식이라는 것을 좀더 명확히 하기 위해 사용함 코드의 가독성이 좋음 오류와 상관없이 Promise 사용을 권장함
+* 중첩 라우트는 다중 URL 세그먼트로 구성된 라우트임
+* 폴더는 URL 세그먼트에 매핑되는 경로 세그먼트를 정의하는데 사용함
+* 파일은 세그먼트에 표시되는 UI를 만드는데 사용됨
+* 폴더를 중첩하면 중첩된 라우트를 만들 수 있음
+* 폴더 이름을 대괄호로 묵으면 데이터에서 여러 페이지를 생성하는데 사용되는 동적 경로 세그먼트가 생성됨
 
- * 동적 렌더링
-  - Next.js에서 페이지는 크게 정적 또는 동적으로 렌더링 됨
-  - searchParams는 요청이 들어와야만 값을 알 수 있기 때문에, next.js는 이 페이지를 정적으로 미리 생성할 수 없고 요청이 올 대 마다 새로 렌더링 해야 함
+- slug 이해
+
+* async function 함수를 async로 선언해야 내부에서 await를 쓸 수 있음
+* await을 사용하는 이유는 서버의 데이터를 읽어올 때 타임 딜레이에 의한 오류를 방지하기 위해서임
+* 매개변수 구조 Next.js가 페이지를 호출할 때는 props 객체로 {params, searchParams, ...} 같은 값을 넘겨주는데 여기서 params만 구조 분해로 받고 있음
+* 타입 {params: Promise<{slug: string}>}: TypeScript 타입 선언임
+* params가 Promise(비동기 값)임을 명시함
+* 데이터 소스가 크다면 .find는 O(n)이므로 DB쿼리로 바꿔야 함
+* O(n)은 알고리즘의 시간 복잡도가 입력 데이터의 크기 n에 비례하여 시간이나 메모리 사용량이 선형적으로 증가하는 것을 의미
+* params가 동기식처럼 보이지만 사실은 비동기식이라는 것을 좀더 명확히 하기 위해 사용함 코드의 가독성이 좋음 오류와 상관없이 Promise 사용을 권장함
+
+- 동적 렌더링
+
+* Next.js에서 페이지는 크게 정적 또는 동적으로 렌더링 됨
+* searchParams는 요청이 들어와야만 값을 알 수 있기 때문에, next.js는 이 페이지를 정적으로 미리 생성할 수 없고 요청이 올 대 마다 새로 렌더링 해야 함
 
 ```
 export default async function ProductsPage({searchParams}: {
@@ -414,85 +898,100 @@ export default async function ProductsPage({searchParams}: {
 
 ### 1. React vs Next.js 라우팅 방식의 차이
 
-| 항목 | React (기본) | Next.js |
-| :--- | :--- | :--- |
-| **라우팅 방식** | 수동 (사용자가 직접 설정) | 자동 (폴더/파일 기반) |
-| **라우터 도구** | `react-router-dom` 같은 외부 라이브러리 필요 | 자체 내장된 파일 기반 라우팅 시스템 |
-| **라우트 정의 방식** | 코드에서 직접 `<Route>`로 정의 | 파일/폴더 이름으로 라우트가 자동 매핑됨 |
-| **예시** | `<Route path="/about" element={<About />} />` | `pages/about.js` → `/about` 경로 자동 생성<br>`app/about/page.tsx` → `/about` 경로 자동 생성 |
+| 항목                 | React (기본)                                  | Next.js                                                                                      |
+| :------------------- | :-------------------------------------------- | :------------------------------------------------------------------------------------------- |
+| **라우팅 방식**      | 수동 (사용자가 직접 설정)                     | 자동 (폴더/파일 기반)                                                                        |
+| **라우터 도구**      | `react-router-dom` 같은 외부 라이브러리 필요  | 자체 내장된 파일 기반 라우팅 시스템                                                          |
+| **라우트 정의 방식** | 코드에서 직접 `<Route>`로 정의                | 파일/폴더 이름으로 라우트가 자동 매핑됨                                                      |
+| **예시**             | `<Route path="/about" element={<About />} />` | `pages/about.js` → `/about` 경로 자동 생성<br>`app/about/page.tsx` → `/about` 경로 자동 생성 |
 
 ---
 
 - **React**는 기본적으로 라우팅 기능이 없기 때문에, 직접 라우터 라이브러리를 설치해서 라우팅을 설정해야 합니다.
 - **Next.js**는 자체적으로 라우팅 시스템을 내장하고 있습니다.
 
-
 * page Router은 동적 라우트, getStaticProps
 * App ROuter 레이아웃 중첩, 서버 컴포넌트, 로딩 UI, 병렬 라우트
 
 ## 20260916(3주차)
-* Route Groups and private folders
- - 라우트 그룹을 사용하여 URL을 변경하지 않고 코드를 정리할 수 있습니다
- - 라우팅되지 않는 파일들은 _folder라는 비공개 디렉토리에 함께 저장합니다
 
-* Parallel(병렬) and intercepted Routes
- - 이러한 기능은 슬롯 기반 레이아웃이나 모달 라우팅과 같은 특정 UI 패턴에 적합합니다
- - 부모 레이아웃에서 렌더링되는 named slots에는 @slot을 사용합니다
- - intercepte pattern을 사용하면 URL을 변경하지 않고도 레이아웃 내에서 다른 경로를 렌더링 할 수 있음
+- Route Groups and private folders
 
-* Metadata file conventions
-* Open Graph and Twitter images
+* 라우트 그룹을 사용하여 URL을 변경하지 않고 코드를 정리할 수 있습니다
+* 라우팅되지 않는 파일들은 \_folder라는 비공개 디렉토리에 함께 저장합니다
 
-* Open Graph Protocol : 링크를 전달할 때 미리보기를 생성하는 프로토콜, META가 주도하는 표준화 규칙
+- Parallel(병렬) and intercepted Routes
 
-* Organizing your project
- - Next.js는 프로젝트 파일을 어떻게 구성하고 어디에 배치할지에 대한 제약이 없음
- - 프로젝트를 체계적으로 구성하는데 도움이 되는 몇 가지 기능을 제공
-* Component hierarchy : 특수 파일에 정의된 컴포넌트는 특정 계층 구조를 렌더링 함
- - 리액트 오류 경계, 리액트 서스팬스 경계, 중첩 layout.js
+* 이러한 기능은 슬롯 기반 레이아웃이나 모달 라우팅과 같은 특정 UI 패턴에 적합합니다
+* 부모 레이아웃에서 렌더링되는 named slots에는 @slot을 사용합니다
+* intercepte pattern을 사용하면 URL을 변경하지 않고도 레이아웃 내에서 다른 경로를 렌더링 할 수 있음
 
-* layout와 template 차이점 : 정적과 동적
+- Metadata file conventions
+- Open Graph and Twitter images
 
-* Colocation : 파일 및 폴더를 기능 별로 그룹화해서 프로젝트의 구조를 명확하게 정의하는 것
- - app 디렉토리에서 중첩된 폴더는 라우팅 구조를 정의함
- - 각 폴더는 URL의 해당 세그먼트에 맵핑되는 라우팅 세그먼트를 나타냄
- - 라우트 구조가 정의되도 해당 라루트 세그먼트에 page파일 또는 라우트파일이 추가되기 전까지는 외부에서 해당 라우트에 접근할 수 있음
+- Open Graph Protocol : 링크를 전달할 때 미리보기를 생성하는 프로토콜, META가 주도하는 표준화 규칙
 
-* private folders
-* 라우팅 그룹은 다음과 같은 경우에 유용함
- - 사이트 섹션, 목적 또는 팀별로 라우트를 구성함
- - 동일한 라우팅 세그먼트 수준에서 중첩 레이아웃을 활성화
+- Organizing your project
 
-* pnpm create next-app@latest
+* Next.js는 프로젝트 파일을 어떻게 구성하고 어디에 배치할지에 대한 제약이 없음
+* 프로젝트를 체계적으로 구성하는데 도움이 되는 몇 가지 기능을 제공
 
-* 레이아웃의 기본 구성
- - children -> 라우트 전환 시 해당 페이지나 하위 레이아웃이 들어오는 자리
- - matadata -> SEO 정보(title, description 등)을 Next.js가 자동으로 head에 삽입
- - app/(group)/layout.tsx -> 특정 그룹/폴더 전용 레이아웃
+- Component hierarchy : 특수 파일에 정의된 컴포넌트는 특정 계층 구조를 렌더링 함
 
-* Opting for loading skeletons on a specific route
- - 로딩js 파일을 통해 특정 라우트 폴더에 로딩 스켈레톤을 적용하려면 새 라우팅 그룹을 만든 다음 해당 라우팅 그룹 내부로 로딩tsx를 이동함
+* 리액트 오류 경계, 리액트 서스팬스 경계, 중첩 layout.js
 
-* Layouts and pages
- - Creating a page
- - Creating a layout
- * 레이아웃은 여러 페이지에서 공유 되는 UI, 네비게이션에서 state 및 상호작용을 유지하며 다시 렌더링 되지 않음
+- layout와 template 차이점 : 정적과 동적
+
+- Colocation : 파일 및 폴더를 기능 별로 그룹화해서 프로젝트의 구조를 명확하게 정의하는 것
+
+* app 디렉토리에서 중첩된 폴더는 라우팅 구조를 정의함
+* 각 폴더는 URL의 해당 세그먼트에 맵핑되는 라우팅 세그먼트를 나타냄
+* 라우트 구조가 정의되도 해당 라루트 세그먼트에 page파일 또는 라우트파일이 추가되기 전까지는 외부에서 해당 라우트에 접근할 수 있음
+
+- private folders
+- 라우팅 그룹은 다음과 같은 경우에 유용함
+
+* 사이트 섹션, 목적 또는 팀별로 라우트를 구성함
+* 동일한 라우팅 세그먼트 수준에서 중첩 레이아웃을 활성화
+
+- pnpm create next-app@latest
+
+- 레이아웃의 기본 구성
+
+* children -> 라우트 전환 시 해당 페이지나 하위 레이아웃이 들어오는 자리
+* matadata -> SEO 정보(title, description 등)을 Next.js가 자동으로 head에 삽입
+* app/(group)/layout.tsx -> 특정 그룹/폴더 전용 레이아웃
+
+- Opting for loading skeletons on a specific route
+
+* 로딩js 파일을 통해 특정 라우트 폴더에 로딩 스켈레톤을 적용하려면 새 라우팅 그룹을 만든 다음 해당 라우팅 그룹 내부로 로딩tsx를 이동함
+
+- Layouts and pages
+
+* Creating a page
+* Creating a layout
+
+- 레이아웃은 여러 페이지에서 공유 되는 UI, 네비게이션에서 state 및 상호작용을 유지하며 다시 렌더링 되지 않음
 
 ## 20260909(2주차)
-* app 디렉토리 생성 - layout.tsx 파일 생성(루트 레이아웃, html and body tag 추가)
+
+- app 디렉토리 생성 - layout.tsx 파일 생성(루트 레이아웃, html and body tag 추가)
+
 ```
 export default function RootLayout({children} : {children: React.ReactNode}) {
     return (<html lang="en"><body>{children}<body></html>);
 }
 ```
-* 초기 콘텐츠로 사용할 홈페이지 "app/page.tsx" 생성
-* 사용자가 애플리케이션의 루트를 방문하면 page, layout 두 문서 모두 렌더링 됨
-* 타입스크립트 환경에서 리액트와 리액트돔을 사용할 수 있도록 타입 정의 제공하는 패키치 설치해야함 pnpm add -D @types/react @types/react-dom, npm install -D @types/react @types/react-dom
-* 일반 설치는 실제 서비스 구동에 반드시 필요한 패키지이고 -D는 개발용이라 코드 빌드, 테스트, 린팅 등 개발할 때만 필요한 패키지
-* 프로젝트 루트에 있는 src 폴덜를 사용하여 애플리케이션 코드와 구성 파일을 분리할 수 있다
-* 루트 레이아웃을 만드는 것을 잊어버린 경우 Next,js에서 개발 서버를 실행할 때 자동으로 빌드 됨
-* 정적 리소스를 저장하기 위한 퍼블릭 디렉토리를 프로젝트 루트에 생성
-* 퍼블릭 디렉토리를 생성하면 기본 URL로 퍼블릭 디렉토리 내부의 리소스를 참조할 수 있음
+
+- 초기 콘텐츠로 사용할 홈페이지 "app/page.tsx" 생성
+- 사용자가 애플리케이션의 루트를 방문하면 page, layout 두 문서 모두 렌더링 됨
+- 타입스크립트 환경에서 리액트와 리액트돔을 사용할 수 있도록 타입 정의 제공하는 패키치 설치해야함 pnpm add -D @types/react @types/react-dom, npm install -D @types/react @types/react-dom
+- 일반 설치는 실제 서비스 구동에 반드시 필요한 패키지이고 -D는 개발용이라 코드 빌드, 테스트, 린팅 등 개발할 때만 필요한 패키지
+- 프로젝트 루트에 있는 src 폴덜를 사용하여 애플리케이션 코드와 구성 파일을 분리할 수 있다
+- 루트 레이아웃을 만드는 것을 잊어버린 경우 Next,js에서 개발 서버를 실행할 때 자동으로 빌드 됨
+- 정적 리소스를 저장하기 위한 퍼블릭 디렉토리를 프로젝트 루트에 생성
+- 퍼블릭 디렉토리를 생성하면 기본 URL로 퍼블릭 디렉토리 내부의 리소스를 참조할 수 있음
+
 ```
 import Image from 'next/profile'
 
@@ -500,33 +999,34 @@ export default function Page(){
     return <Image src="/profile.png" alt="profile" width=(100) height(100) />
 }
 ```
-* https://nextjs.org/docs/app/api-reference/config/typescript
-* /src 디렉토리 사용 추천 코드와 설정 파일을 분리
-* .mjs는 module JavaScript의미함, .eslintrc.json은 정적인 설정 파일, exlint.config.mjs는 동적인 설정도 가능
-* 라우팅은 경로를 찾아가는 과정을 의미하며 path도 경로로 번역하기 때문에 구별을 위해 대부분 라우팅으로 번역함
-* 최상위 폴더는 디렉토리로 하위 폴더는 folder로 쓰는 경우가 있음
-* segment는 라우팅과 관련이 있는 디렉토리의 별칭 정도임
-* 앱 라우터, 페이지 라우터, public 제공될 정적 리소스, src
-* Folder and file conventions : 최상위 파일은 애플리케이션 구성, 종속성 관리, 프록시 실행, 모니터링 도구 통합, 환경 변수 정의에 사용함
-* 라우팅 파일 : 경로를 노출할 페이지를 추가하고 헤더, 네비게이션, 푸터와 같은 공유 UI 레이아웃을 추가 할 수 있음 이 밖에 skeletons 로딩 화면을 추가하고 오류 경계를 표시하는 오류화면을 추가하고 API 경로를 추가할 수 있음
-* Nested routes : 디렉토리는 URL segments를 정의함 디렉토리를 중첩하면 세그먼트도 중첩됨 모든 수준의 레이아웃은 하위 세그먼트를 감쌈 페이지나 경로 파일이 존재하면 해당 경로는 공개됨
-* Dynamic routes : 대괄호를 사용하여 새그먼트를 매개변수화 할 수 있음 단일 배개변수의 경우 segment를 사용함 모든 값을 포괄하는 매개변수(catch-all)의 경우 [...sagment]를 사용함 선택적 포괄 매개변수의 경우 [[...sagment]]를 사용함 params 속성을 통해 값에 접근할 수 있음
 
+- https://nextjs.org/docs/app/api-reference/config/typescript
+- /src 디렉토리 사용 추천 코드와 설정 파일을 분리
+- .mjs는 module JavaScript의미함, .eslintrc.json은 정적인 설정 파일, exlint.config.mjs는 동적인 설정도 가능
+- 라우팅은 경로를 찾아가는 과정을 의미하며 path도 경로로 번역하기 때문에 구별을 위해 대부분 라우팅으로 번역함
+- 최상위 폴더는 디렉토리로 하위 폴더는 folder로 쓰는 경우가 있음
+- segment는 라우팅과 관련이 있는 디렉토리의 별칭 정도임
+- 앱 라우터, 페이지 라우터, public 제공될 정적 리소스, src
+- Folder and file conventions : 최상위 파일은 애플리케이션 구성, 종속성 관리, 프록시 실행, 모니터링 도구 통합, 환경 변수 정의에 사용함
+- 라우팅 파일 : 경로를 노출할 페이지를 추가하고 헤더, 네비게이션, 푸터와 같은 공유 UI 레이아웃을 추가 할 수 있음 이 밖에 skeletons 로딩 화면을 추가하고 오류 경계를 표시하는 오류화면을 추가하고 API 경로를 추가할 수 있음
+- Nested routes : 디렉토리는 URL segments를 정의함 디렉토리를 중첩하면 세그먼트도 중첩됨 모든 수준의 레이아웃은 하위 세그먼트를 감쌈 페이지나 경로 파일이 존재하면 해당 경로는 공개됨
+- Dynamic routes : 대괄호를 사용하여 새그먼트를 매개변수화 할 수 있음 단일 배개변수의 경우 segment를 사용함 모든 값을 포괄하는 매개변수(catch-all)의 경우 [...sagment]를 사용함 선택적 포괄 매개변수의 경우 [[...sagment]]를 사용함 params 속성을 통해 값에 접근할 수 있음
 
 ## 20260902(1주차)
-* project structue, layout and pages, linking and navigating, server and client components, fetching data, css, image optimization, font optimization, deploying
-* Next.js는 풀스텍 웹 애플리케이션 구축을 위한 React 프레임워크입니다
-* 프레임워크의 프레임워크를 메타 프레임워크라고 함
-* React 컴포넌트를 사용하여 사용자 인터페이스를 구축하고 Next.js를 사용하여 추가 기능 및 최적화를 구현함
-* Getting Started, Guides, API Refernce 등등 문서가 있음
-* App Router and Page Router 앱은 서버 컴포넌트처럼 새로운 리액트 기능을 지원하는 최신 라우터고 페이지는 초기 라우터로 현재도 지원되고 개선되는 중
-* pnpm은 performant(효율적인) NPM 약자로 고성능 node 패키지 매니저임, npm, yarn과 같은 목적의 패키지 관리자이지만, 디스크 공간 낭비 / 복잡한 의존성 관리 / 느린 설치 속도 문제 개선을 위해 개발됨 특징은 하드링크(공간), 빠른 패키치 설치 속도, 효율적인 종속성 관리
-* pnpm create next-app@latest, 서버 실행 pnpm dev
-* pnpm create react-app name, rm -rf node_modules package-lock-json, pnpm install, pnpm dev
-* hard link vs symbolic link
-* 하드 링크 : 우리가 파일이라고 부르는 것은 세 부분으로 나뉘어 있음 Directory Entry(파일 이름과 해당 inode 번호를 매핑 정보가 있는 특수 파일), inode(파일 또는 디렉토리에 대한 모든 메타데이터를 저장하는 구조체(권한, 소유자, 크기, 데이터 블록 위치)), data blocks(실제 데이터가 존재하는 영역), 하드링크가 생성하면 디렉토리 엔트리에 매핑 정보가 추가되어 동일한 inode를 가리킴, 원본과 하드링크는 완전히 동일한 파일, 원본과 사본 개념이 아님
-* 디렉토리 엔트리에 있는 원본과 하드링크는 같은 inode를 참조하므로 데이터 블록을 100% 공유함 따라서 원본이나 하드링크 중에서 하나만 삭제하면 디렉토리 엔트리에서 이름만 삭제됨 link count가 0이 되지 않는 한 데이터는 남아있음 pnpm store에 저장된 패키지나 node.modules/ pnpm에 저장된 패키지나 동일한 파일을 참조하고 있음 pnpm으로 패키지를 설치하면 전역 store에 한 번만 저장됨
-* 심볼릭 링크(소프트 링크) inode를 공유하지 않고 경로 문자열을 저장해 두는 특수 파일 따라서 심볼릭 링크를 열면 내부에 적힌 경로를 따라가서 원본 파일을 찾음 원본이 삭제되면 심볼릭 링크는 끊어진 경로가 되므로 더 이상 사용할 수 없음
-* Hydration 오류는 보통 SSR(서버 사이드 렌더링)을 할때 서버에서 렌더링된 HTML과 클라이언트에서 렌더링된 HTML이 불일칠할 때 발생함, 동적데이터, 브라우저 전용 API 사용 ,HTML 구조 오류 등등
-* 에러 메세지에 힌트가 있음
-* 폴리필 구성.
+
+- project structue, layout and pages, linking and navigating, server and client components, fetching data, css, image optimization, font optimization, deploying
+- Next.js는 풀스텍 웹 애플리케이션 구축을 위한 React 프레임워크입니다
+- 프레임워크의 프레임워크를 메타 프레임워크라고 함
+- React 컴포넌트를 사용하여 사용자 인터페이스를 구축하고 Next.js를 사용하여 추가 기능 및 최적화를 구현함
+- Getting Started, Guides, API Refernce 등등 문서가 있음
+- App Router and Page Router 앱은 서버 컴포넌트처럼 새로운 리액트 기능을 지원하는 최신 라우터고 페이지는 초기 라우터로 현재도 지원되고 개선되는 중
+- pnpm은 performant(효율적인) NPM 약자로 고성능 node 패키지 매니저임, npm, yarn과 같은 목적의 패키지 관리자이지만, 디스크 공간 낭비 / 복잡한 의존성 관리 / 느린 설치 속도 문제 개선을 위해 개발됨 특징은 하드링크(공간), 빠른 패키치 설치 속도, 효율적인 종속성 관리
+- pnpm create next-app@latest, 서버 실행 pnpm dev
+- pnpm create react-app name, rm -rf node_modules package-lock-json, pnpm install, pnpm dev
+- hard link vs symbolic link
+- 하드 링크 : 우리가 파일이라고 부르는 것은 세 부분으로 나뉘어 있음 Directory Entry(파일 이름과 해당 inode 번호를 매핑 정보가 있는 특수 파일), inode(파일 또는 디렉토리에 대한 모든 메타데이터를 저장하는 구조체(권한, 소유자, 크기, 데이터 블록 위치)), data blocks(실제 데이터가 존재하는 영역), 하드링크가 생성하면 디렉토리 엔트리에 매핑 정보가 추가되어 동일한 inode를 가리킴, 원본과 하드링크는 완전히 동일한 파일, 원본과 사본 개념이 아님
+- 디렉토리 엔트리에 있는 원본과 하드링크는 같은 inode를 참조하므로 데이터 블록을 100% 공유함 따라서 원본이나 하드링크 중에서 하나만 삭제하면 디렉토리 엔트리에서 이름만 삭제됨 link count가 0이 되지 않는 한 데이터는 남아있음 pnpm store에 저장된 패키지나 node.modules/ pnpm에 저장된 패키지나 동일한 파일을 참조하고 있음 pnpm으로 패키지를 설치하면 전역 store에 한 번만 저장됨
+- 심볼릭 링크(소프트 링크) inode를 공유하지 않고 경로 문자열을 저장해 두는 특수 파일 따라서 심볼릭 링크를 열면 내부에 적힌 경로를 따라가서 원본 파일을 찾음 원본이 삭제되면 심볼릭 링크는 끊어진 경로가 되므로 더 이상 사용할 수 없음
+- Hydration 오류는 보통 SSR(서버 사이드 렌더링)을 할때 서버에서 렌더링된 HTML과 클라이언트에서 렌더링된 HTML이 불일칠할 때 발생함, 동적데이터, 브라우저 전용 API 사용 ,HTML 구조 오류 등등
+- 에러 메세지에 힌트가 있음
+- 폴리필 구성.
