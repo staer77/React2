@@ -1,7 +1,10 @@
-import Link from "next/dist/client/link";
+import Link from 'next/dist/client/link';
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <body>

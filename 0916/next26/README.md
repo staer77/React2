@@ -1,3 +1,8 @@
+- http://localhost:3000/posts/nextjs
+- http://localhost:3000/posts/routing
+- http://localhost:3000/posts/ssr-ssg
+- http://localhost:3000/posts/dynamic-routes
+
 ## 20261014 (7주차)
 
 ### 1. Server Component vs Client Component 사용 기준
@@ -17,27 +22,27 @@
 // dummy data (@/lib/data.tsx)
 export const posts = [
   {
-    id: "nextjs",
-    title: "Next.js 소개",
-    content: "Next.js는 React 기반의 풀스택 프레임워크입니다.",
+    id: 'nextjs',
+    title: 'Next.js 소개',
+    content: 'Next.js는 React 기반의 풀스택 프레임워크입니다.',
     likes: 5,
   },
   {
-    id: "routing",
-    title: "App Router 알아보기",
-    content: "Next.js 13부터는 App Router가 도입되었습니다.",
+    id: 'routing',
+    title: 'App Router 알아보기',
+    content: 'Next.js 13부터는 App Router가 도입되었습니다.',
     likes: 3,
   },
   {
-    id: "ssr-ssg",
-    title: "SSR vs SSG",
-    content: "서버사이드 렌더링과 정적 사이트 생성의 차이를 알아봅니다.",
+    id: 'ssr-ssg',
+    title: 'SSR vs SSG',
+    content: '서버사이드 렌더링과 정적 사이트 생성의 차이를 알아봅니다.',
     likes: 0,
   },
   {
-    id: "dynamic-routes",
-    title: "동적 라우팅",
-    content: "Next.js에서 [slug]를 활용한 라우팅 방식입니다.",
+    id: 'dynamic-routes',
+    title: '동적 라우팅',
+    content: 'Next.js에서 [slug]를 활용한 라우팅 방식입니다.',
     likes: 0,
   },
 ];
@@ -45,9 +50,9 @@ export const posts = [
 
 ```tsx
 // Server Component (page.tsx)
-import LikeButton from "@/ui/like-button";
-import { posts } from "@/lib/data";
-import { notFound } from "next/navigation";
+import LikeButton from '@/ui/like-button';
+import { posts } from '@/lib/data';
+import { notFound } from 'next/navigation';
 
 export default async function PostPage({
   params,
@@ -103,9 +108,9 @@ export default async function PostPage({
 
 ```tsx
 // src/ui/like-button.tsx
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 
 export default function LikeButton({ likes }: { likes: number }) {
   // 초기 likes 값을 받아 로컬 상태에 반영
@@ -217,8 +222,8 @@ export default function LikeButton({ likes }: { likes: number }) {
 
 ```tsx
 // 블로그 목록 (Blog.tsx)
-import Link from "next/link";
-import { posts } from "./posts";
+import Link from 'next/link';
+import { posts } from './posts';
 
 export default function Blog() {
   return (
@@ -240,8 +245,8 @@ export default function Blog() {
 
 ```tsx
 // 블로그 상세 페이지 (PostPage.tsx)
-import { notFound } from "next/navigation";
-import { posts } from "../posts";
+import { notFound } from 'next/navigation';
+import { posts } from '../posts';
 
 export async function generateStaticParams() {
   return posts.map((post) => ({
@@ -329,11 +334,11 @@ export default async function PostPage({
 
 ```ts
 // next.config.ts
-import type { NextConfig } from "next";
-import bundleAnalyzer from "@next/bundle-analyzer";
+import type { NextConfig } from 'next';
+import bundleAnalyzer from '@next/bundle-analyzer';
 
 const withBundleAnalyzer = bundleAnalyzer({
-  enabled: process.env.ANALYZE === "true",
+  enabled: process.env.ANALYZE === 'true',
 });
 
 const nextConfig: NextConfig = {
@@ -405,7 +410,7 @@ export default withBundleAnalyzer(nextConfig);
 
 ```tsx
 export async function generateStaticParams() {
-  const posts = await fetch("https://.../posts").then((res) => res.json());
+  const posts = await fetch('https://.../posts').then((res) => res.json());
 
   return posts.map((post) => ({
     slug: post.slug,
@@ -451,7 +456,7 @@ export default function Home() {
 
 ```tsx
 // app/layout.tsx
-import Link from "next/link";
+import Link from 'next/link';
 
 export default function RootLayout({
   children,
@@ -492,7 +497,7 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<{ id?: string; name?: string }>;
 }) {
-  const { id = "non id", name = "non name" } = await searchParams;
+  const { id = 'non id', name = 'non name' } = await searchParams;
   return (
     <div>
       <h1>Products Page</h1>
@@ -578,7 +583,7 @@ export default function RootLayout({
 - **`public` 디렉토리**: 프로젝트 루트에 생성하여 이미지 등 정적 리소스를 저장하며, 기본 URL(`/`)을 기준으로 참조합니다.
 
 ```tsx
-import Image from "next/image";
+import Image from 'next/image';
 
 export default function Page() {
   return (
