@@ -5,6 +5,87 @@
 3. 배운내용 & 코드
 4. 최근 날짜가 제일 위로 올라오게
 
+## 20261028(9주차)
+
+```
+import Link from "next/link";
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body>
+        <header className="root-layout-header">
+          <h1>Main Navigation</h1>
+          <nav>
+            <ul className="nav-list global-nav">
+              <li>
+                <Link href="/">Home</Link>
+              </li>
+              <li>
+                <Link href="/counter">Counter</Link>
+              </li>
+              <li>
+                <Link href="/nextjs">nextjs</Link>
+              </li>
+              <li>
+                <Link href="/routing">routing</Link>
+              </li>
+              <li>
+                <Link href="/ssr-ssg">ssr-ssg</Link>
+              </li>
+              <li>
+                <Link href="/dynamic-routes">dynamic-routes</Link>
+              </li>
+            </ul>
+          </nav>
+        </header>
+        <main>
+          {children}
+        </main>
+        <footer className="root-layout-footer">
+          <p>© 2024 Company Name. All rights reserved.</p>
+        </footer>
+      </body>
+    </html>
+  );
+}
+```
+
+- 랜더링 느림
+- Search Engine Optimization가 불리
+
+### 3-1. client component 사용
+
+- 파일의 맨 위, 즉 import문 위에 `"use client"` 지시문을 추가하여 client component를 생성할 수 있습니다.
+- `"use client"`는 server와 client 모듈 트리 사이의 경계를 선언하는 데 사용됩니다.
+- 파일에 `"use client"`로 표시되면 해당 파일의 모든 import와 자식 component는 client 번들의 일부로 간주됩니다.
+- 즉, client를 대상으로 하는 **모든** component에 이 지시문을 추가할 필요가 없습니다.
+
+### `app/ui/counter.tsx`
+
+```
+'use client'
+
+import { useState } from 'react'
+
+export default function Counter() {
+  const [count, setCount] = useState(0)
+
+  return (
+    <div>
+      <p>{count} likes</p>
+      <button onClick={() => setCount(count + 1)}>Click me</button>
+    </div>
+  )
+}
+```
+
+- 메타 변수 만드는 이유는 키워드와 헷갈리지 않기 위해
+
 ## 20261014(7주차)
 
 - server에서 데이터를 가져와 UI의 일부를 렌더링을 할 수 있고 선택적으로 결과를 cache한 후 client로 스트리밍할 수 있습니다
@@ -29,36 +110,41 @@
 ### 그리고, '@/ui/like-button'은 client component이기 때문에 'use client'를 사용하고 있습니다.
 
 ```
+
 import LikeButton from '@/app/ui/like-button'
 import { getPost } from '@/lib/data'
 
 export default async function Page({ params }: { params: { id: string } }) {
-  const post = await getPost(params.id)
+const post = await getPost(params.id)
 
-  return (
-    <div>
-      <main>
-        <h1>{post.title}</h1>
-        {/* ... */}
-        <LikeButton likes="{post.likes}"/>
-      </main>
-    </div>
-  )
+return (
+<div>
+<main>
+<h1>{post.title}</h1>
+{/_ ... _/}
+<LikeButton likes="{post.likes}"/>
+</main>
+</div>
+)
 }
+
 ```
 
 ```
+
 // dummy data.tsx
 
 export const posts = [
-  { id: "nextjs", title: "Next.js 소개", content: "Next.js는 React 기반의 풀스택 프레임워크입니다.", likes: 5 },
-  { id: "routing", title: "App Router 알아보기", content: "Next.js 13부터는 App Router가 도입되었습니다.", likes: 3 },
-  { id: "ssr-ssg", title: "SSR vs SSG", content: "서버사이드 렌더링과 정적 사이트 생성의 차이를 알아봅니다.", likes: 0 },
-  { id: "dynamic-routes", title: "동적 라우팅", content: "Next.js에서 [slug]를 활용한 라우팅 방식입니다.", likes: 0 },
+{ id: "nextjs", title: "Next.js 소개", content: "Next.js는 React 기반의 풀스택 프레임워크입니다.", likes: 5 },
+{ id: "routing", title: "App Router 알아보기", content: "Next.js 13부터는 App Router가 도입되었습니다.", likes: 3 },
+{ id: "ssr-ssg", title: "SSR vs SSG", content: "서버사이드 렌더링과 정적 사이트 생성의 차이를 알아봅니다.", likes: 0 },
+{ id: "dynamic-routes", title: "동적 라우팅", content: "Next.js에서 [slug]를 활용한 라우팅 방식입니다.", likes: 0 },
 ];
+
 ```
 
 ```
+
 import LikeButton from '@/ui/like-button'
 // 문서의 import { getPost } from '@/lib/data' 대신 데이터만 직접 가져옵니다.
 import { posts } from '@/lib/data'
@@ -67,63 +153,67 @@ import { notFound } from 'next/navigation'
 // 문서에서는 다음 구문을 풀어서 작성했지만 한 줄로 하는 것이 더 명확해 보입니다.
 // export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
 export default async function PostPage({
-  params
+params
 }: {
-  params: Promise<{ id: string }>
+params: Promise<{ id: string }>
 }) {
-  const { id } = await params;
+const { id } = await params;
 
-  // posts에서 슬러그에 해당하는 포스트를 찾습니다.
-  // getPost 대신 직접 posts 배열에서 찾습니다.
-  const post = posts.find((p) => p.id === id);
+// posts에서 슬러그에 해당하는 포스트를 찾습니다.
+// getPost 대신 직접 posts 배열에서 찾습니다.
+const post = posts.find((p) => p.id === id);
 
-  if (!post) {
-    notFound();
-  }
-
-  return (
-    <div>
-      <main>
-        <h1>{post.title}</h1>
-        {/* ... */}
-        <LikeButton likes={post.likes} />
-      </main>
-    </div>
-  )
+if (!post) {
+notFound();
 }
+
+return (
+<div>
+<main>
+<h1>{post.title}</h1>
+{/_ ... _/}
+<LikeButton likes={post.likes} />
+</main>
+</div>
+)
+}
+
 ```
 
 ### Optimistic Update(낙관적 업데이트) : 서버의 응답을 기다리지 않고, UI를 즉시 변경한 후 서버에 요청을 보내는 방식입니다. 만일 응답이 없으면 롤백 됩니다.
 
 ```
+
 'use client'
 
 import { useState } from 'react'
 export default function LikeButton({ likes }: { likes: number }) {
-  // Optimistic Updates(낙관적 업데이트)
-  // 클라이언트 전용 컴포넌트 - 초기 likes 값을 받아 로컬에서 즉시 반영합니다.
-  // 서버에 저장하지 않고, 단순히 UI 상에서 좋아요 수를 증가시키는 역할을 합니다.
-  const [count, setCount] = useState<number>(likes ?? 0)
-  const [isLiking, setIsLiking] = useState(false)
+// Optimistic Updates(낙관적 업데이트)
+// 클라이언트 전용 컴포넌트 - 초기 likes 값을 받아 로컬에서 즉시 반영합니다.
+// 서버에 저장하지 않고, 단순히 UI 상에서 좋아요 수를 증가시키는 역할을 합니다.
+const [count, setCount] = useState<number>(likes ?? 0)
+const [isLiking, setIsLiking] = useState(false)
 
-  const handleClick = async () => {
-    // 낙관적 업데이트
-    setIsLiking(true)
-    setCount((c) => c + 1)
+const handleClick = async () => {
+// 낙관적 업데이트
+setIsLiking(true)
+setCount((c) => c + 1)
 
     // 실제 저장 로직(API 호출 등)이 있다면 이곳에서 호출할 수 있습니다.
     // 예: await fetch('/api/like', { method: 'POST', body: JSON.stringify({ id }) })
 
     // 예제에서는 짧은 지연 후 버튼 상태만 해제합니다.
     setTimeout(() => setIsLiking(false), 300)
-  }
 
-  return (
-    <button onClick={handleClick} disabled={isLiking} aria-pressed={false}>
-      👍 {count}
-    </button>
-  )
 }
+
+return (
+<button onClick={handleClick} disabled={isLiking} aria-pressed={false}>
+👍 {count}
+</button>
+)
+}
+
 ```
 
 # Optimistic Update
@@ -174,8 +264,10 @@ export default function LikeButton({ likes }: { likes: number }) {
 ### @/ui/like-button.tsx에서는 state를 2개 사용하고 있습니다.
 
 ```
+
 const [count, setCount] = useState<number>(likes ?? 0)
 const [isLiking, setIsLiking] = useState(false)
+
 ```
 
 ### count는 like 버튼을 클릭한 횟수 입니다. (초기값 : data의 like 필드)
@@ -193,7 +285,9 @@ const [isLiking, setIsLiking] = useState(false)
 ### count는 like 버튼을 클릭한 횟수 라고 했지만 (likes)가 아닌 (like ?? 0)로 작성한 이유는 무엇일까요?
 
 ```
+
 const [count, setCount] = useState<number>(likes ?? 0)
+
 ```
 
 [ Null 병합 연산자(Nullish Coalescing Operator) ]
@@ -242,36 +336,39 @@ const [count, setCount] = useState<number>(likes ?? 0)
 ### Optimistic Update(낙관적 업데이트) : 서버의 응답을 기다리지 않고, UI를 즉시 변경한 후 서버에 요청을 보내는 방식입니다. 만일 응답이 없으면 롤백 됩니다.
 
 ```
+
 // src > ui > like-button.tsx > LikeButton
 'use client'
 
 import { useState } from 'react'
 
 export default function LikeButton({ likes }: { likes: number }) {
-  // Optimistic Updates(낙관적 업데이트)
-  // 클라이언트 전용 컴포넌트 - 초기 likes 값을 받아 로컬에서 즉시 반영합니다.
-  // 서버에 저장하지 않고, 단순히 UI 상에서 좋아요 수를 증가시키는 역할을 합니다.
-  const [count, setCount] = useState<number>(likes ?? 0)
-  const [isLiking, setIsLiking] = useState(false)
+// Optimistic Updates(낙관적 업데이트)
+// 클라이언트 전용 컴포넌트 - 초기 likes 값을 받아 로컬에서 즉시 반영합니다.
+// 서버에 저장하지 않고, 단순히 UI 상에서 좋아요 수를 증가시키는 역할을 합니다.
+const [count, setCount] = useState<number>(likes ?? 0)
+const [isLiking, setIsLiking] = useState(false)
 
-  const handleClick = async () => {
-    // 낙관적 업데이트
-    setIsLiking(true)
-    setCount((c) => c + 1)
+const handleClick = async () => {
+// 낙관적 업데이트
+setIsLiking(true)
+setCount((c) => c + 1)
 
     // 실제 저장 로직(API 호출 등)이 있다면 이곳에서 호출할 수 있습니다.
     // 예: await fetch('/api/like', { method: 'POST', body: JSON.stringify({ id }) })
 
     // 예제에서는 짧은 지연 후 버튼 상태만 해제합니다.
     setTimeout(() => setIsLiking(false), 300)
-  }
 
-  return (
-    <button onClick={handleClick} disabled={isLiking} aria-pressed={false}>
-      👍 {count}
-    </button>
-  )
 }
+
+return (
+<button onClick={handleClick} disabled={isLiking} aria-pressed={false}>
+👍 {count}
+</button>
+)
+}
+
 ```
 
 ### 버튼을 클릭하면 handleClick이 호출되며, isLiking state를 true로, count state를 +1 변경해 줍니다.
@@ -283,17 +380,19 @@ export default function LikeButton({ likes }: { likes: number }) {
 ### 테스트 할 때는 300ms로는 힘들기 때문에 3000ms 정도로 조정해서 테스트 하는 것이 좋습니다. -> 3초 동안은 클릭해도 반응이 없습니다.
 
 ```
+
 const handleClick = async () => {
-  // 낙관적 업데이트
-  setIsLiking(true)
-  setCount((c) => c + 1)
+// 낙관적 업데이트
+setIsLiking(true)
+setCount((c) => c + 1)
 
-  // 실제 저장 로직(API 호출 등)이 있다면 이곳에서 호출할 수 있습니다.
-  // 예: await fetch('/api/like', { method: 'POST', body: JSON.stringify({ id }) })
+// 실제 저장 로직(API 호출 등)이 있다면 이곳에서 호출할 수 있습니다.
+// 예: await fetch('/api/like', { method: 'POST', body: JSON.stringify({ id }) })
 
-  // 예제에서는 짧은 지연 후 버튼 상태만 해제합니다.
-  setTimeout(() => setIsLiking(false), 300)
+// 예제에서는 짧은 지연 후 버튼 상태만 해제합니다.
+setTimeout(() => setIsLiking(false), 300)
 }
+
 ```
 
 ## 2. Next.js에서 server와 client component는 어떻게 작동합니까?
@@ -386,86 +485,94 @@ const handleClick = async () => {
 - 즉, client를 대상으로 하는 모든 component에 이 지시문을 추가할 필요가 없습니다.
 
 ```
+
 // app/ui/counter.tsx
 "use client";
 
 import { useState } from "react";
 
 export default function Counter() {
-  const [count, setCount] = useState(0);
+const [count, setCount] = useState(0);
 
-  return (
-    <div>
-      <p>{count} likes</p>
-      <button onClick={() => setCount(count + 1)}>Click me</button>
-    </div>
-  );
+return (
+<div>
+<p>{count} likes</p>
+<button onClick={() => setCount(count + 1)}>Click me</button>
+</div>
+);
 }
+
 ```
 
 ```
+
 // src > components > counter.tsx > Counter
 'use client'
 
 import { useState } from 'react'
 
 export default function Counter() {
-  const [count, setCount] = useState(0)
+const [count, setCount] = useState(0)
 
-  return (
-    <div>
-      <p>{count} likes</p>
-      <button onClick={() => setCount(count + 1)}>Click me</button>
-    </div>
-  )
+return (
+<div>
+<p>{count} likes</p>
+<button onClick={() => setCount(count + 1)}>Click me</button>
+</div>
+)
 }
+
 ```
 
 ```
+
 // src > app > counter > page.tsx > CounterPage
 import Counter from '@/components/counter';
 
 export default function CounterPage() {
-  return (
-    <div>
-      <h1>Counter Page</h1>
-      <Counter/>
-    </div>
-  );
+return (
+<div>
+<h1>Counter Page</h1>
+<Counter/>
+</div>
+);
 }
+
 ```
 
 ```
+
 // src > app > layout.tsx > RootLayout
 import Link from "next/link";
 
 export default function RootLayout({
-  children,
+children,
 }: Readonly<{
-  children: React.ReactNode;
+children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en">
-      <body>
-        <header>
-          <p>=== Root Layout Header ===</p>
-          <nav>
-            <Link href="/">Home</Link> | <Link href="/counter">Counter</Link><br /><br />
-            Slug Page Menu :&nbsp;
-            <Link href="/nextjs">nextjs</Link>&nbsp;|&nbsp;
-            <Link href="/routing">routing</Link>&nbsp;|&nbsp;
-            <Link href="/ssr-ssg">ssr-ssg</Link>&nbsp;|&nbsp;
-            <Link href="/dynamic-routes">dynamic-routes</Link>
-          </nav>
-        </header>
-        <main>
-          {children}
-        </main>
-        <footer>=== Root Layout Footer ===</footer>
-      </body>
-    </html>
-  );
+return (
+<html lang="en">
+<body>
+<header>
+<p>=== Root Layout Header ===</p>
+<nav>
+<Link href="/">Home</Link> | <Link href="/counter">Counter</Link><br /><br />
+Slug Page Menu :&nbsp;
+<Link href="/nextjs">nextjs</Link>&nbsp;|&nbsp;
+<Link href="/routing">routing</Link>&nbsp;|&nbsp;
+<Link href="/ssr-ssg">ssr-ssg</Link>&nbsp;|&nbsp;
+<Link href="/dynamic-routes">dynamic-routes</Link>
+</nav>
+</header>
+<main>
+{children}
+</main>
+<footer>=== Root Layout Footer ===</footer>
+</body>
+</html>
+);
 }
+
 ```
 
 ## 20261007(6주차)
