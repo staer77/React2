@@ -86,6 +86,44 @@ export default function Counter() {
 
 - 메타 변수 만드는 이유는 키워드와 헷갈리지 않기 위해
 
+### 3-2. JS bundle 크기 줄이기
+
+- client JavaScript 번들의 크기를 줄이려면 UI의 큰 부분을 client component로 표시하는 대신 특정 대화형 component에 `"use client"`를 추가합니다.
+
+- 예를 들어, 다음 예제의 `<Layout>` component는 로고와 탐색 링크와 같은 정적 요소가 대부분이지만 대화형 검색창이 포함되어 있습니다.
+
+- `<Search />`는 대화형이기 때문에 client component가 되어야 하지만, 나머지 layout은 server component로 유지될 수 있습니다.
+  - `# 나머지 layout은 server component로 유지해야 합니다!`
+
+  - `props`를 사용하여 `server component`에서 `client component`로 데이터를 전달할 수 있습니다
+
+- `# 앞에서 작성한 PostPage(/[id]/page.tsx) server component는 line28에서 client component인 LikeButton으로 likes props를 전달하고 있는 것을 확인할 수 있습니다.`
+
+### `app/[id]/page.tsx`
+
+```
+import LikeButton from '@/app/ui/like-button'
+import { getPost } from '@/lib/data'
+
+export default async function Page({ params }: { params: { id: string } }) {
+  const post = await getPost(params.id)
+
+  return <LikeButton likes="{post.likes}"/>
+}
+```
+
+```
+return (
+  <div>
+    <main>
+      <h1>{post.title}</h1>
+      {/* ... */}
+      <LikeButton likes={post.likes} />
+    </main>
+  </div>
+)
+```
+
 ## 20261014(7주차)
 
 - server에서 데이터를 가져와 UI의 일부를 렌더링을 할 수 있고 선택적으로 결과를 cache한 후 client로 스트리밍할 수 있습니다
